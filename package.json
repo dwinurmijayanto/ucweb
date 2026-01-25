@@ -7,7 +7,8 @@
     "deploy": "vercel --prod"
   },
   "keywords": [
-    "tiktok",
+    "ucweb",
+    "uc-share.com",
     "downloader",
     "api",
     "vercel",
