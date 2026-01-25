@@ -2,7 +2,7 @@
   "name": "uc-share-downloader-api",
   "version": "1.0.0",
   "description": "UC-SHARE.COM Video Downloader API for Vercel",
-  "main": "index.php",
+  "main": "api/index.php",
   "scripts": {
     "deploy": "vercel --prod"
   },
