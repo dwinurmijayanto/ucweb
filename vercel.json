@@ -6,7 +6,7 @@
   },
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
       "headers": [
         {
           "key": "Content-Type",
@@ -31,7 +31,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/index.php"
+      "destination": "/api/index.php"
     }
   ]
 }
