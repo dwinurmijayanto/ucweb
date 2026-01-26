@@ -49,7 +49,7 @@
                 <input
                     type="text"
                     id="urlInput"
-                    placeholder="Masukkan URL UC Share (contoh: https://drive.ucweb.com/s/079eb21d6f504)"
+                    placeholder="Masukkan URL UC Share (contoh: https://drive.ucweb.com/s/xxxxxxxxx)"
                     class="w-full px-6 py-5 pr-36 rounded-2xl bg-white/10 backdrop-blur-lg border-2 border-purple-500/30 text-white text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                     required
                 />
@@ -149,7 +149,7 @@
             </svg>
             <h3 class="text-gray-300 text-2xl font-bold mb-3">Siap untuk download?</h3>
             <p class="text-gray-400 text-lg mb-2">Masukkan URL UC Share di atas untuk memulai</p>
-            <p class="text-gray-500 text-sm">Contoh: https://drive.ucweb.com/s/079eb21d6f504</p>
+            <p class="text-gray-500 text-sm">Contoh: https://drive.ucweb.com/s/xxxxxxxxxx</p>
             
             <div class="mt-12 max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white/5 backdrop-blur rounded-xl p-6 border border-purple-500/20">
