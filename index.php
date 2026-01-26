@@ -13,76 +13,72 @@
             transform: translateY(-5px);
             box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4);
         }
-        .loader {
-            border: 3px solid rgba(255, 255, 255, 0.2);
-            border-top: 3px solid #a855f7;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
 $videos = [];
 $error = '';
-$loading = false;
 $shareInfo = null;
 $fetchSummary = null;
+$inputUrl = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     $url = trim($_POST['url']);
+    $inputUrl = htmlspecialchars($url);
     
     if (empty($url)) {
         $error = 'Silakan masukkan URL UC Share';
     } else {
-        // Call API Vercel
-        $apiUrl = 'https://ucweb-five.vercel.app/api/?url=' . urlencode($url);
-        
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $apiUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_TIMEOUT => 60,
-            CURLOPT_HTTPHEADER => [
+        try {
+            // Call API Vercel
+            $apiUrl = 'https://ucweb-five.vercel.app/api/?url=' . urlencode($url);
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $apiUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Accept: application/json',
                 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            ]
-        ]);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        
-        if (curl_errno($ch)) {
-            $error = 'Gagal terhubung ke API. Error: ' . curl_error($ch);
-        } else {
-            $data = json_decode($response, true);
+            ]);
             
-            if ($data && isset($data['status']) && $data['status'] === 'success') {
-                $videos = $data['videos'] ?? [];
-                $shareInfo = $data['share_info'] ?? null;
-                $fetchSummary = $data['fetch_summary'] ?? null;
-                
-                if (empty($videos)) {
-                    $error = 'Tidak ada video yang ditemukan';
-                }
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            
+            if (curl_errno($ch)) {
+                $error = 'Gagal terhubung ke API: ' . curl_error($ch);
+            } else if ($httpCode !== 200) {
+                $error = 'API Error: HTTP ' . $httpCode;
             } else {
-                $error = $data['message'] ?? 'Gagal mengambil data dari API';
+                $data = json_decode($response, true);
+                
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $error = 'Invalid JSON response from API';
+                } else if (isset($data['status']) && $data['status'] === 'success') {
+                    $videos = isset($data['videos']) ? $data['videos'] : [];
+                    $shareInfo = isset($data['share_info']) ? $data['share_info'] : null;
+                    $fetchSummary = isset($data['fetch_summary']) ? $data['fetch_summary'] : null;
+                    
+                    if (empty($videos)) {
+                        $error = 'Tidak ada video yang ditemukan';
+                    }
+                } else {
+                    $error = isset($data['message']) ? $data['message'] : 'Gagal mengambil data dari API';
+                }
             }
+            
+            curl_close($ch);
+        } catch (Exception $e) {
+            $error = 'Error: ' . $e->getMessage();
         }
-        
-        curl_close($ch);
     }
 }
-
-$inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
 ?>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
@@ -101,7 +97,7 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
 
         <!-- Search Form -->
         <div class="mb-10 max-w-5xl mx-auto">
-            <form method="POST" class="relative" id="searchForm">
+            <form method="POST" action="" class="relative">
                 <input
                     type="text"
                     name="url"
@@ -133,19 +129,27 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Total Files</div>
-                        <div class="text-white text-2xl font-bold"><?php echo $shareInfo['total_files']; ?></div>
+                        <div class="text-white text-2xl font-bold">
+                            <?php echo isset($shareInfo['total_files']) ? $shareInfo['total_files'] : 0; ?>
+                        </div>
                     </div>
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Total Videos</div>
-                        <div class="text-purple-400 text-2xl font-bold"><?php echo $shareInfo['total_videos'] ?? 0; ?></div>
+                        <div class="text-purple-400 text-2xl font-bold">
+                            <?php echo isset($shareInfo['total_videos']) ? $shareInfo['total_videos'] : 0; ?>
+                        </div>
                     </div>
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Total Size</div>
-                        <div class="text-pink-400 text-2xl font-bold"><?php echo number_format($shareInfo['total_size_mb'], 2); ?> MB</div>
+                        <div class="text-pink-400 text-2xl font-bold">
+                            <?php echo isset($shareInfo['total_size_mb']) ? number_format($shareInfo['total_size_mb'], 2) : '0.00'; ?> MB
+                        </div>
                     </div>
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Folders Scanned</div>
-                        <div class="text-green-400 text-2xl font-bold"><?php echo $shareInfo['folders_scanned'] ?? 0; ?></div>
+                        <div class="text-green-400 text-2xl font-bold">
+                            <?php echo isset($shareInfo['folders_scanned']) ? $shareInfo['folders_scanned'] : 0; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -159,17 +163,23 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                 <div class="flex items-center justify-center gap-6 text-center">
                     <div>
                         <div class="text-gray-300 text-sm mb-1">Total Processed</div>
-                        <div class="text-white text-xl font-bold"><?php echo $fetchSummary['total']; ?></div>
+                        <div class="text-white text-xl font-bold">
+                            <?php echo isset($fetchSummary['total']) ? $fetchSummary['total'] : 0; ?>
+                        </div>
                     </div>
                     <div class="h-10 w-px bg-white/20"></div>
                     <div>
                         <div class="text-gray-300 text-sm mb-1">Success</div>
-                        <div class="text-green-400 text-xl font-bold"><?php echo $fetchSummary['success']; ?></div>
+                        <div class="text-green-400 text-xl font-bold">
+                            <?php echo isset($fetchSummary['success']) ? $fetchSummary['success'] : 0; ?>
+                        </div>
                     </div>
                     <div class="h-10 w-px bg-white/20"></div>
                     <div>
                         <div class="text-gray-300 text-sm mb-1">Failed</div>
-                        <div class="text-red-400 text-xl font-bold"><?php echo $fetchSummary['failed']; ?></div>
+                        <div class="text-red-400 text-xl font-bold">
+                            <?php echo isset($fetchSummary['failed']) ? $fetchSummary['failed'] : 0; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -186,7 +196,7 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                         <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
                         <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
                     </svg>
-                    <span><?php echo htmlspecialchars($error); ?></span>
+                    <span><?php echo $error; ?></span>
                 </div>
             </div>
         </div>
@@ -195,27 +205,27 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
         <!-- Videos Grid -->
         <?php if (!empty($videos)): ?>
         <div class="space-y-8">
-            <!-- Header Info -->
             <div class="flex flex-wrap items-center justify-between gap-4 px-2">
                 <h2 class="text-3xl font-bold text-white">
                     📹 Found <?php echo count($videos); ?> video<?php echo count($videos) !== 1 ? 's' : ''; ?>
                 </h2>
             </div>
 
-            <!-- Video Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <?php foreach ($videos as $index => $video): ?>
                 <?php 
                     $isError = isset($video['status']) && $video['status'] === 'error';
-                    $name = $video['name'] ?? 'Unknown';
-                    $thumbnail = $video['download']['thumbnail'] ?? '';
-                    $videoUrl = $video['download']['url'] ?? '#';
-                    $directDownload = $video['download']['direct_download'] ?? $videoUrl;
+                    $name = isset($video['name']) ? $video['name'] : 'Unknown';
+                    $thumbnail = isset($video['download']['thumbnail']) ? $video['download']['thumbnail'] : '';
+                    $videoUrl = isset($video['download']['url']) ? $video['download']['url'] : '#';
+                    $directDownload = isset($video['download']['direct_download']) ? $video['download']['direct_download'] : $videoUrl;
+                    $sizeMb = isset($video['size_mb']) ? $video['size_mb'] : 0;
+                    $depth = isset($video['depth']) ? $video['depth'] : 0;
+                    $path = isset($video['path']) ? $video['path'] : '';
                 ?>
                 
                 <div class="card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 <?php echo $isError ? 'border-red-500/50' : 'border-purple-500/20'; ?>">
                     
-                    <!-- Thumbnail -->
                     <a
                         href="<?php echo $isError ? '#' : htmlspecialchars($videoUrl); ?>"
                         target="_blank"
@@ -227,7 +237,7 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                             src="<?php echo htmlspecialchars($thumbnail); ?>"
                             alt="<?php echo htmlspecialchars($name); ?>"
                             class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-                            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect fill=%22%23374151%22 width=%22400%22 height=%22300%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ENo Preview%3C/text%3E%3C/svg%3E'"
+                            onerror="this.parentElement.innerHTML='<div class=\'w-full h-48 bg-gray-700 flex items-center justify-center\'><svg class=\'w-16 h-16 text-gray-500\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path d=\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\' stroke-width=\'2\'/></svg></div>';"
                         />
                         <?php else: ?>
                         <div class="w-full h-48 bg-gray-700 flex items-center justify-center">
@@ -246,43 +256,36 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                         </div>
                         <?php endif; ?>
                         
-                        <!-- Duration Badge -->
                         <?php if (!$isError && isset($video['video_info']['duration_formatted'])): ?>
                         <div class="absolute top-3 right-3 bg-black/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-sm font-bold">
                             ⏱️ <?php echo htmlspecialchars($video['video_info']['duration_formatted']); ?>
                         </div>
                         <?php endif; ?>
                         
-                        <!-- Path Badge -->
-                        <?php if (!$isError && isset($video['path']) && $video['depth'] > 0): ?>
+                        <?php if (!$isError && $depth > 0): ?>
                         <div class="absolute top-3 left-3 bg-blue-600/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-xs font-bold">
-                            📁 Level <?php echo $video['depth']; ?>
+                            📁 Level <?php echo $depth; ?>
                         </div>
                         <?php endif; ?>
                     </a>
 
-                    <!-- Content -->
                     <div class="p-5 space-y-4">
-                        <!-- Name -->
                         <h3 class="text-white font-bold text-base line-clamp-2 min-h-[3rem]" title="<?php echo htmlspecialchars($name); ?>">
                             <?php echo htmlspecialchars($name); ?>
                         </h3>
 
-                        <!-- Path (if in subfolder) -->
-                        <?php if (!$isError && isset($video['path']) && $video['path'] !== '/' . $name): ?>
-                        <div class="text-gray-400 text-xs truncate" title="<?php echo htmlspecialchars($video['path']); ?>">
-                            📂 <?php echo htmlspecialchars($video['path']); ?>
+                        <?php if (!$isError && !empty($path) && $path !== '/' . $name): ?>
+                        <div class="text-gray-400 text-xs truncate" title="<?php echo htmlspecialchars($path); ?>">
+                            📂 <?php echo htmlspecialchars($path); ?>
                         </div>
                         <?php endif; ?>
 
-                        <!-- Error Message -->
                         <?php if ($isError): ?>
                         <div class="bg-red-500/20 border border-red-500/50 rounded-lg px-3 py-2 text-red-300 text-sm">
-                            ❌ <?php echo htmlspecialchars($video['error'] ?? 'Unknown error'); ?>
+                            ❌ <?php echo htmlspecialchars(isset($video['error']) ? $video['error'] : 'Unknown error'); ?>
                         </div>
                         <?php else: ?>
                         
-                        <!-- Info Badges -->
                         <div class="flex flex-wrap gap-2 text-xs font-semibold">
                             <?php if (isset($video['video_info']['resolution']['label'])): ?>
                             <span class="bg-purple-500/30 text-purple-200 px-3 py-1.5 rounded-full border border-purple-400/30">
@@ -291,7 +294,7 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                             <?php endif; ?>
                             
                             <span class="bg-blue-500/30 text-blue-200 px-3 py-1.5 rounded-full border border-blue-400/30">
-                                💾 <?php echo number_format($video['size_mb'], 2); ?> MB
+                                💾 <?php echo number_format($sizeMb, 2); ?> MB
                             </span>
                             
                             <?php if (isset($video['video_info']['fps'])): ?>
@@ -301,9 +304,7 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                             <?php endif; ?>
                         </div>
 
-                        <!-- Action Buttons -->
                         <div class="grid grid-cols-2 gap-2">
-                            <!-- Watch Button -->
                             <a
                                 href="<?php echo htmlspecialchars($videoUrl); ?>"
                                 target="_blank"
@@ -317,7 +318,6 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                                 <span>Tonton</span>
                             </a>
                             
-                            <!-- Download Button -->
                             <a
                                 href="<?php echo htmlspecialchars($directDownload); ?>"
                                 target="_blank"
@@ -356,7 +356,6 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                 Contoh: https://drive.ucweb.com/s/079eb21d6f504
             </p>
             
-            <!-- Features -->
             <div class="mt-12 max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white/5 backdrop-blur rounded-xl p-6 border border-purple-500/20">
                     <div class="text-4xl mb-3">🚀</div>
@@ -377,7 +376,6 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
         </div>
         <?php endif; ?>
 
-        <!-- Footer -->
         <div class="text-center mt-16 pb-8">
             <p class="text-gray-500 text-sm">
                 Made with ❤️ using UC Share API
