@@ -5,40 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UC Share Video Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
     <style>
-        .video-js {
+        #videoPlayer {
             width: 100%;
-            height: 100%;
-        }
-        .video-js .vjs-big-play-button {
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            width: 80px;
-            height: 80px;
-            font-size: 48px;
-            border: 3px solid #a855f7;
-            background-color: rgba(168, 85, 247, 0.8);
-        }
-        .video-js .vjs-big-play-button:hover {
-            background-color: rgba(168, 85, 247, 1);
+            max-height: 80vh;
+            background: #000;
         }
         .player-container {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
-            height: 0;
             background: #000;
             border-radius: 16px;
             overflow: hidden;
         }
-        .player-container video {
+        .controls {
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
-            width: 100%;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .player-container:hover .controls {
+            opacity: 1;
+        }
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .progress-filled {
             height: 100%;
+            background: #a855f7;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        .control-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .control-btn:hover {
+            background: rgba(168, 85, 247, 0.8);
+        }
+        .volume-slider {
+            width: 80px;
         }
     </style>
 </head>
@@ -67,6 +86,10 @@ if (empty($videoUrl)) {
           </div>';
     exit;
 }
+
+// Remove callback parameter from URL to prevent download
+$cleanUrl = preg_replace('/&?callback=[^&]*/', '', $videoUrl);
+$cleanUrl = preg_replace('/&?callback-var=[^&]*/', '', $cleanUrl);
 ?>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
@@ -105,17 +128,66 @@ if (empty($videoUrl)) {
                 <div class="player-container">
                     <video
                         id="videoPlayer"
-                        class="video-js vjs-big-play-centered"
-                        controls
-                        preload="auto"
                         poster="<?php echo htmlspecialchars($thumbnail); ?>"
-                        data-setup='{}'
+                        preload="metadata"
+                        crossorigin="anonymous"
                     >
-                        <source src="<?php echo htmlspecialchars($videoUrl); ?>" type="video/mp4">
-                        <p class="vjs-no-js">
-                            Browser Anda tidak mendukung video HTML5. Silakan gunakan browser modern.
-                        </p>
+                        <source src="<?php echo htmlspecialchars($cleanUrl); ?>" type="video/mp4">
+                        Browser Anda tidak mendukung video HTML5.
                     </video>
+                    
+                    <!-- Custom Controls -->
+                    <div class="controls">
+                        <div class="progress-bar" id="progressBar">
+                            <div class="progress-filled" id="progressFilled"></div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <button class="control-btn" id="playPauseBtn">
+                                    <svg id="playIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+                                    </svg>
+                                    <svg id="pauseIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+                                        <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+                                    </svg>
+                                </button>
+                                
+                                <div class="flex items-center gap-2">
+                                    <button class="control-btn" id="muteBtn">
+                                        <svg id="volumeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
+                                            <path d="M15.54 8.46a5 5 0 010 7.07" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                        <svg id="muteIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/>
+                                            <line x1="23" y1="9" x2="17" y2="15" stroke-width="2"/>
+                                            <line x1="17" y1="9" x2="23" y2="15" stroke-width="2"/>
+                                        </svg>
+                                    </button>
+                                    <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="100">
+                                </div>
+                                
+                                <span class="text-white text-sm" id="timeDisplay">0:00 / 0:00</span>
+                            </div>
+                            
+                            <div class="flex items-center gap-3">
+                                <select id="speedSelect" class="control-btn text-sm">
+                                    <option value="0.5">0.5x</option>
+                                    <option value="1" selected>1x</option>
+                                    <option value="1.5">1.5x</option>
+                                    <option value="2">2x</option>
+                                </select>
+                                
+                                <button class="control-btn" id="fullscreenBtn">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -123,31 +195,24 @@ if (empty($videoUrl)) {
         <!-- Video Controls & Info -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
-            <!-- Playback Controls -->
+            <!-- Quick Actions -->
             <div class="bg-white/5 backdrop-blur-lg rounded-2xl border-2 border-purple-500/30 p-6">
                 <h3 class="text-white font-bold text-lg mb-4 flex items-center gap-2">
                     <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    Kontrol Pemutaran
+                    Aksi Cepat
                 </h3>
                 
                 <div class="space-y-3">
-                    <button onclick="changeSpeed(0.5)" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
-                        <span>Kecepatan 0.5x</span>
-                        <span class="text-gray-400 text-sm">Lambat</span>
+                    <button onclick="skipTime(-10)" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
+                        <span>⏪ Mundur 10 Detik</span>
                     </button>
-                    <button onclick="changeSpeed(1)" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
-                        <span>Kecepatan 1x</span>
-                        <span class="text-purple-400 text-sm">Normal</span>
+                    <button onclick="skipTime(10)" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
+                        <span>⏩ Maju 10 Detik</span>
                     </button>
-                    <button onclick="changeSpeed(1.5)" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
-                        <span>Kecepatan 1.5x</span>
-                        <span class="text-gray-400 text-sm">Cepat</span>
-                    </button>
-                    <button onclick="changeSpeed(2)" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
-                        <span>Kecepatan 2x</span>
-                        <span class="text-gray-400 text-sm">Sangat Cepat</span>
+                    <button onclick="restartVideo()" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all flex items-center justify-between">
+                        <span>🔄 Ulang dari Awal</span>
                     </button>
                 </div>
             </div>
@@ -158,7 +223,7 @@ if (empty($videoUrl)) {
                     <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    Aksi
+                    Lainnya
                 </h3>
                 
                 <div class="space-y-3">
@@ -175,14 +240,7 @@ if (empty($videoUrl)) {
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/>
                         </svg>
-                        Salin Link Video
-                    </button>
-                    
-                    <button onclick="toggleFullscreen()" class="w-full bg-white/10 hover:bg-white/20 text-white py-3 px-4 rounded-lg transition-all font-bold flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Layar Penuh
+                        Salin Link
                     </button>
                 </div>
             </div>
@@ -200,22 +258,15 @@ if (empty($videoUrl)) {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white/5 rounded-lg p-4">
                     <div class="text-gray-400 text-sm mb-1">Status</div>
-                    <div class="text-white font-bold" id="videoStatus">Memuat...</div>
+                    <div class="text-white font-bold" id="videoStatus">Siap Diputar</div>
                 </div>
                 <div class="bg-white/5 rounded-lg p-4">
                     <div class="text-gray-400 text-sm mb-1">Durasi</div>
                     <div class="text-white font-bold" id="videoDuration">--:--</div>
                 </div>
                 <div class="bg-white/5 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">Waktu Saat Ini</div>
-                    <div class="text-white font-bold" id="videoCurrentTime">00:00</div>
-                </div>
-            </div>
-            
-            <div class="mt-4 bg-white/5 rounded-lg p-4">
-                <div class="text-gray-400 text-sm mb-2">URL Video</div>
-                <div class="text-white text-xs break-all font-mono bg-black/30 p-3 rounded">
-                    <?php echo htmlspecialchars($videoUrl); ?>
+                    <div class="text-gray-400 text-sm mb-1">Buffered</div>
+                    <div class="text-white font-bold" id="bufferedInfo">0%</div>
                 </div>
             </div>
         </div>
@@ -230,143 +281,169 @@ if (empty($videoUrl)) {
     </div>
 </div>
 
-<!-- Video.js Library -->
-<script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
-
 <script>
-// Initialize Video.js player
-const player = videojs('videoPlayer', {
-    controls: true,
-    autoplay: false,
-    preload: 'auto',
-    fluid: true,
-    responsive: true,
-    playbackRates: [0.5, 1, 1.5, 2],
-    controlBar: {
-        volumePanel: {
-            inline: false
-        }
+const video = document.getElementById('videoPlayer');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const playIcon = document.getElementById('playIcon');
+const pauseIcon = document.getElementById('pauseIcon');
+const muteBtn = document.getElementById('muteBtn');
+const volumeIcon = document.getElementById('volumeIcon');
+const muteIcon = document.getElementById('muteIcon');
+const volumeSlider = document.getElementById('volumeSlider');
+const progressBar = document.getElementById('progressBar');
+const progressFilled = document.getElementById('progressFilled');
+const timeDisplay = document.getElementById('timeDisplay');
+const speedSelect = document.getElementById('speedSelect');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+// Play/Pause
+playPauseBtn.addEventListener('click', togglePlay);
+video.addEventListener('click', togglePlay);
+
+function togglePlay() {
+    if (video.paused) {
+        video.play();
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        document.getElementById('videoStatus').textContent = 'Sedang Diputar';
+    } else {
+        video.pause();
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        document.getElementById('videoStatus').textContent = 'Dijeda';
+    }
+}
+
+// Mute/Unmute
+muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    if (video.muted) {
+        volumeIcon.classList.add('hidden');
+        muteIcon.classList.remove('hidden');
+    } else {
+        volumeIcon.classList.remove('hidden');
+        muteIcon.classList.add('hidden');
     }
 });
 
-// Update video info
-player.on('loadedmetadata', function() {
-    const duration = player.duration();
-    document.getElementById('videoDuration').textContent = formatTime(duration);
-    document.getElementById('videoStatus').textContent = 'Siap Diputar';
+// Volume
+volumeSlider.addEventListener('input', (e) => {
+    video.volume = e.target.value / 100;
+    video.muted = false;
+    volumeIcon.classList.remove('hidden');
+    muteIcon.classList.add('hidden');
 });
 
-player.on('timeupdate', function() {
-    const currentTime = player.currentTime();
-    document.getElementById('videoCurrentTime').textContent = formatTime(currentTime);
+// Progress
+video.addEventListener('timeupdate', () => {
+    const percent = (video.currentTime / video.duration) * 100;
+    progressFilled.style.width = percent + '%';
+    timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
 });
 
-player.on('playing', function() {
-    document.getElementById('videoStatus').textContent = 'Sedang Diputar';
+progressBar.addEventListener('click', (e) => {
+    const rect = progressBar.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    video.currentTime = percent * video.duration;
 });
 
-player.on('pause', function() {
-    document.getElementById('videoStatus').textContent = 'Dijeda';
+// Speed
+speedSelect.addEventListener('change', (e) => {
+    video.playbackRate = parseFloat(e.target.value);
 });
 
-player.on('ended', function() {
+// Fullscreen
+fullscreenBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        document.querySelector('.player-container').requestFullscreen();
+    }
+});
+
+// Video events
+video.addEventListener('loadedmetadata', () => {
+    document.getElementById('videoDuration').textContent = formatTime(video.duration);
+});
+
+video.addEventListener('progress', () => {
+    if (video.buffered.length > 0) {
+        const buffered = (video.buffered.end(video.buffered.length - 1) / video.duration) * 100;
+        document.getElementById('bufferedInfo').textContent = Math.round(buffered) + '%';
+    }
+});
+
+video.addEventListener('ended', () => {
+    playIcon.classList.remove('hidden');
+    pauseIcon.classList.add('hidden');
     document.getElementById('videoStatus').textContent = 'Selesai';
 });
 
-player.on('error', function() {
-    document.getElementById('videoStatus').innerHTML = '<span class="text-red-400">Error - Gagal Memuat Video</span>';
+video.addEventListener('error', (e) => {
+    console.error('Video error:', e);
+    document.getElementById('videoStatus').innerHTML = '<span class="text-red-400">Error Loading Video</span>';
 });
 
-// Helper Functions
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    switch(e.key) {
+        case ' ':
+            e.preventDefault();
+            togglePlay();
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            skipTime(-10);
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            skipTime(10);
+            break;
+        case 'f':
+            e.preventDefault();
+            fullscreenBtn.click();
+            break;
+        case 'm':
+            e.preventDefault();
+            muteBtn.click();
+            break;
+    }
+});
+
+// Helper functions
 function formatTime(seconds) {
-    if (isNaN(seconds) || seconds === 0) return '00:00';
-    
+    if (isNaN(seconds) || seconds === 0) return '0:00';
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    
     if (h > 0) {
         return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function changeSpeed(speed) {
-    player.playbackRate(speed);
-    
-    // Visual feedback
-    const buttons = document.querySelectorAll('button[onclick^="changeSpeed"]');
-    buttons.forEach(btn => {
-        const span = btn.querySelector('span:last-child');
-        if (btn.onclick.toString().includes(speed)) {
-            span.className = 'text-purple-400 text-sm font-bold';
-            span.textContent = '✓ Aktif';
-        } else {
-            span.className = 'text-gray-400 text-sm';
-            const speedText = btn.querySelector('span:first-child').textContent;
-            if (speedText.includes('0.5')) span.textContent = 'Lambat';
-            else if (speedText.includes('1x')) span.textContent = 'Normal';
-            else if (speedText.includes('1.5')) span.textContent = 'Cepat';
-            else span.textContent = 'Sangat Cepat';
-        }
-    });
+function skipTime(seconds) {
+    video.currentTime += seconds;
+}
+
+function restartVideo() {
+    video.currentTime = 0;
+    video.play();
 }
 
 function copyUrl() {
-    const url = '<?php echo addslashes($videoUrl); ?>';
+    const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
-        // Show success message
         const btn = event.target.closest('button');
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Link Disalin!';
         btn.classList.add('bg-green-600');
-        
         setTimeout(() => {
             btn.innerHTML = originalHtml;
             btn.classList.remove('bg-green-600');
         }, 2000);
-    }).catch(err => {
-        alert('Gagal menyalin link: ' + err);
     });
 }
-
-function toggleFullscreen() {
-    if (player.isFullscreen()) {
-        player.exitFullscreen();
-    } else {
-        player.requestFullscreen();
-    }
-}
-
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    switch(e.key) {
-        case ' ':
-            e.preventDefault();
-            if (player.paused()) {
-                player.play();
-            } else {
-                player.pause();
-            }
-            break;
-        case 'ArrowLeft':
-            e.preventDefault();
-            player.currentTime(player.currentTime() - 5);
-            break;
-        case 'ArrowRight':
-            e.preventDefault();
-            player.currentTime(player.currentTime() + 5);
-            break;
-        case 'f':
-            e.preventDefault();
-            toggleFullscreen();
-            break;
-        case 'm':
-            e.preventDefault();
-            player.muted(!player.muted());
-            break;
-    }
-});
 </script>
 
 </body>
