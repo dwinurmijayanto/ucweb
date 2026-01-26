@@ -520,7 +520,7 @@ class UCWebDownloader {
                         'download' => [
                             'url' => $downloadUrl,
                             'thumbnail' => $data['preview_url'] ?? null,
-                            'direct_download' => 'https://ucweb-five.vercel.app/api/?url=' . urlencode($downloadUrl ?? '') . '&download=1&filename=' . urlencode($fileName)
+                            'direct_download' => 'https://upload.vbi1.my.id/ucweb/ucweb.php?url=' . urlencode($downloadUrl ?? '') . '&download=1&filename=' . urlencode($fileName)
                         ]
                     ]);
                     $successCount++;
