@@ -1,22 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UC Share Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4);
+        }
+    </style>
 </head>
 <body>
 <?php
 $videos = [];
 $error = '';
-$loading = false;
+$totalSize = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     $url = trim($_POST['url']);
     
     if (empty($url)) {
-        $error = 'Please enter a UC Share URL';
+        $error = 'Silakan masukkan URL UC Share';
     } else {
         $apiUrl = 'https://ucweb-five.vercel.app/api/?url=' . urlencode($url);
         
@@ -25,19 +34,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         
         if (curl_errno($ch)) {
-            $error = 'Failed to fetch videos. Please check the URL and try again.';
+            $error = 'Gagal mengambil data. Silakan periksa URL dan coba lagi.';
         } else {
             $data = json_decode($response, true);
             
             if ($data && isset($data['status']) && $data['status'] === 'success' && isset($data['videos'])) {
                 $videos = $data['videos'];
+                foreach ($videos as $video) {
+                    if (isset($video['size_mb'])) {
+                        $totalSize += $video['size_mb'];
+                    }
+                }
             } else {
-                $error = 'No videos found or invalid response';
+                $error = 'Video tidak ditemukan atau URL tidak valid';
             }
         }
         
@@ -48,54 +62,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
 ?>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-    <div class="max-w-7xl mx-auto">
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+    <div class="max-w-6xl mx-auto">
         
         <!-- Header -->
-        <div class="text-center mb-8">
-            <div class="flex items-center justify-center gap-3 mb-4">
-                <svg class="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="7" y1="2" x2="7" y2="22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="17" y1="2" x2="17" y2="22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="2" y1="12" x2="22" y2="12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="2" y1="7" x2="7" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="2" y1="17" x2="7" y2="17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="17" y1="17" x2="22" y2="17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <line x1="17" y1="7" x2="22" y2="7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <div class="text-center mb-12">
+            <div class="flex items-center justify-center gap-4 mb-4">
+                <svg class="w-14 h-14 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" stroke-width="2"/>
+                    <line x1="7" y1="2" x2="7" y2="22" stroke-width="2"/>
+                    <line x1="17" y1="2" x2="17" y2="22" stroke-width="2"/>
+                    <line x1="2" y1="12" x2="22" y2="12" stroke-width="2"/>
+                    <line x1="2" y1="7" x2="7" y2="7" stroke-width="2"/>
+                    <line x1="2" y1="17" x2="7" y2="17" stroke-width="2"/>
+                    <line x1="17" y1="17" x2="22" y2="17" stroke-width="2"/>
+                    <line x1="17" y1="7" x2="22" y2="7" stroke-width="2"/>
                 </svg>
-                <h1 class="text-4xl font-bold text-white">UC Share Viewer</h1>
+                <h1 class="text-5xl font-bold text-white">UC Share Viewer</h1>
             </div>
-            <p class="text-gray-300">Download and view videos from UC Share links</p>
+            <p class="text-gray-300 text-lg">Download and view videos from UC Share links</p>
         </div>
 
         <!-- Search Form -->
-        <div class="mb-8 max-w-3xl mx-auto">
+        <div class="mb-10 max-w-4xl mx-auto">
             <form method="POST" class="relative">
                 <input
                     type="text"
                     name="url"
                     value="<?php echo $inputUrl; ?>"
-                    placeholder="Enter UC Share URL (e.g., https://uc-share.com/s/6541c36f1a754?la=id)"
-                    class="w-full px-5 py-3 pr-28 rounded-xl bg-white/10 backdrop-blur border border-purple-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Masukkan URL UC Share (contoh: https://uc-share.com/s/6541c36f1a754?la=id)"
+                    class="w-full px-6 py-4 pr-32 rounded-2xl bg-white/10 backdrop-blur-lg border-2 border-purple-500/30 text-white text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                    required
                 />
                 <button
                     type="submit"
-                    class="absolute right-2 top-2 bottom-2 px-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                    class="absolute right-2 top-2 bottom-2 px-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="m21 21-4.35-4.35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8" stroke-width="2"/>
+                        <path d="m21 21-4.35-4.35" stroke-width="2"/>
                     </svg>
-                    <span class="hidden sm:inline">Search</span>
+                    <span>Search</span>
                 </button>
             </form>
         </div>
 
         <!-- Error Message -->
         <?php if (!empty($error)): ?>
-        <div class="max-w-3xl mx-auto mb-6">
-            <div class="bg-red-500/20 border border-red-500/50 rounded-lg px-5 py-3 text-red-200">
+        <div class="max-w-4xl mx-auto mb-8">
+            <div class="bg-red-500/20 border-2 border-red-500/50 rounded-2xl px-6 py-4 text-red-200 text-center backdrop-blur-lg">
+                <svg class="w-6 h-6 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke-width="2"/>
+                    <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
+                </svg>
                 <?php echo htmlspecialchars($error); ?>
             </div>
         </div>
@@ -103,69 +123,88 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
 
         <!-- Videos Grid -->
         <?php if (!empty($videos)): ?>
-        <div class="space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <h2 class="text-2xl font-bold text-white">
+        <div class="space-y-8">
+            <!-- Header Info -->
+            <div class="flex flex-wrap items-center justify-between gap-4 px-2">
+                <h2 class="text-3xl font-bold text-white">
                     Found <?php echo count($videos); ?> video<?php echo count($videos) !== 1 ? 's' : ''; ?>
                 </h2>
-                <div class="text-gray-400">
-                    Total: <?php echo number_format(array_sum(array_column($videos, 'size_mb')), 2); ?> MB
+                <div class="text-gray-300 text-lg font-semibold bg-white/10 px-4 py-2 rounded-lg backdrop-blur">
+                    Total: <?php echo number_format($totalSize, 2); ?> MB
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Video Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <?php foreach ($videos as $index => $video): ?>
-                <div class="bg-white/5 backdrop-blur rounded-xl overflow-hidden border border-purple-500/20 hover:border-purple-500/50 transition-all hover:scale-105">
+                <div class="card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 border-purple-500/20">
+                    
+                    <!-- Thumbnail with Overlay -->
                     <a
                         href="<?php echo htmlspecialchars($video['download']['url']); ?>"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="block relative group"
+                        class="block relative group overflow-hidden"
                     >
                         <img
                             src="<?php echo htmlspecialchars($video['download']['thumbnail']); ?>"
                             alt="<?php echo htmlspecialchars($video['name']); ?>"
-                            class="w-full h-44 object-cover"
+                            class="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500"
                         />
-                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <polyline points="15 3 21 3 21 9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <line x1="10" y1="14" x2="21" y2="3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" stroke-width="2"/>
+                                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
                             </svg>
                         </div>
-                        <div class="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded text-white text-xs">
+                        
+                        <!-- Duration Badge -->
+                        <?php if (isset($video['video_info']['duration_formatted'])): ?>
+                        <div class="absolute top-3 right-3 bg-black/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-sm font-bold">
                             <?php echo htmlspecialchars($video['video_info']['duration_formatted']); ?>
                         </div>
+                        <?php endif; ?>
                     </a>
 
-                    <div class="p-4 space-y-3">
-                        <h3 class="text-white font-semibold line-clamp-2 min-h-[3rem]">
+                    <!-- Content -->
+                    <div class="p-5 space-y-4">
+                        <!-- Name -->
+                        <h3 class="text-white font-bold text-lg line-clamp-2 min-h-[3.5rem]">
                             <?php echo htmlspecialchars($video['name']); ?>
                         </h3>
 
-                        <div class="flex flex-wrap gap-2 text-xs">
-                            <span class="bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full">
+                        <!-- Info Badges -->
+                        <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                            <?php if (isset($video['video_info']['resolution']['label'])): ?>
+                            <span class="bg-purple-500/30 text-purple-200 px-3 py-1.5 rounded-full border border-purple-400/30">
                                 <?php echo htmlspecialchars($video['video_info']['resolution']['label']); ?>
                             </span>
-                            <span class="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">
+                            <?php endif; ?>
+                            
+                            <?php if (isset($video['size_mb'])): ?>
+                            <span class="bg-blue-500/30 text-blue-200 px-3 py-1.5 rounded-full border border-blue-400/30">
                                 <?php echo number_format($video['size_mb'], 2); ?> MB
                             </span>
-                            <span class="bg-green-500/20 text-green-300 px-2 py-1 rounded-full">
+                            <?php endif; ?>
+                            
+                            <?php if (isset($video['video_info']['fps'])): ?>
+                            <span class="bg-green-500/30 text-green-200 px-3 py-1.5 rounded-full border border-green-400/30">
                                 <?php echo htmlspecialchars($video['video_info']['fps']); ?> FPS
                             </span>
+                            <?php endif; ?>
                         </div>
 
+                        <!-- Download Button -->
                         <a
                             href="<?php echo htmlspecialchars($video['download']['url']); ?>"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-2.5 rounded-lg font-semibold transition-all text-center flex items-center justify-center gap-2"
+                            class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/50"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <polyline points="7 10 12 15 17 10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <line x1="12" y1="15" x2="12" y2="3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="2"/>
+                                <polyline points="7 10 12 15 17 10" stroke-width="2"/>
+                                <line x1="12" y1="15" x2="12" y2="3" stroke-width="2"/>
                             </svg>
                             <span>Download</span>
                         </a>
@@ -177,16 +216,19 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
         <?php endif; ?>
 
         <!-- Empty State -->
-        <?php if (empty($videos) && empty($error) && $_SERVER['REQUEST_METHOD'] !== 'POST'): ?>
-        <div class="text-center py-16">
-            <svg class="w-20 h-20 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="7" y1="2" x2="7" y2="22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="17" y1="2" x2="17" y2="22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="2" y1="12" x2="22" y2="12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <?php if (empty($videos) && empty($error)): ?>
+        <div class="text-center py-20">
+            <svg class="w-24 h-24 text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" stroke-width="2"/>
+                <line x1="7" y1="2" x2="7" y2="22" stroke-width="2"/>
+                <line x1="17" y1="2" x2="17" y2="22" stroke-width="2"/>
+                <line x1="2" y1="12" x2="22" y2="12" stroke-width="2"/>
             </svg>
-            <p class="text-gray-400 text-lg">
-                Enter a UC Share URL above to get started
+            <p class="text-gray-400 text-xl mb-3">
+                Masukkan URL UC Share untuk memulai
+            </p>
+            <p class="text-gray-500 text-sm">
+                Contoh: https://uc-share.com/s/6541c36f1a754?la=id
             </p>
         </div>
         <?php endif; ?>
