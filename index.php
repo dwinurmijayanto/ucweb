@@ -296,6 +296,9 @@ function createVideoCard(video, index) {
     const card = document.createElement('div');
     card.className = `card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 ${isError ? 'border-red-500/50' : 'border-purple-500/20'}`;
     
+    // Create player URL - UPDATED TO USE player.php
+    const playerUrl = `player.php?url=${encodeURIComponent(videoUrl)}&name=${encodeURIComponent(name)}&thumb=${encodeURIComponent(thumbnail)}&back=index.html`;
+    
     const thumbnailHtml = !isError && thumbnail ? 
         `<img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(name)}" class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gray-700 flex items-center justify-center\\'><svg class=\\'w-16 h-16 text-gray-500\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path d=\\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\\' stroke-width=\\'2\\'/></svg></div>';">` :
         `<div class="w-full h-48 bg-gray-700 flex items-center justify-center"><svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/></svg></div>`;
@@ -318,9 +321,10 @@ function createVideoCard(video, index) {
     const fpsBadge = video.video_info?.fps ? 
         `<span class="bg-green-500/30 text-green-200 px-3 py-1.5 rounded-full border border-green-400/30">🎞️ ${escapeHtml(video.video_info.fps)} FPS</span>` : '';
     
+    // UPDATED: Tombol Tonton sekarang membuka player.php
     const actionButtons = !isError ? `
         <div class="grid grid-cols-2 gap-2">
-            <a href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" class="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50">
+            <a href="${playerUrl}" class="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
                 <span>Tonton</span>
             </a>
@@ -331,7 +335,7 @@ function createVideoCard(video, index) {
         </div>` : '';
     
     card.innerHTML = `
-        <a href="${isError ? '#' : escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" class="block relative group overflow-hidden ${isError ? 'pointer-events-none' : ''}">
+        <a href="${isError ? '#' : playerUrl}" class="block relative group overflow-hidden ${isError ? 'pointer-events-none' : ''}">
             ${thumbnailHtml}
             ${!isError ? '<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"><svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg></div>' : ''}
             ${durationBadge}
