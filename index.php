@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     if (empty($url)) {
         $error = 'Silakan masukkan URL UC Share';
     } else {
-        // Call API lokal (ganti dengan URL API Anda)
+        // Call API Vercel
         $apiUrl = 'https://ucweb-five.vercel.app/api/?url=' . urlencode($url);
         
         $ch = curl_init();
@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_TIMEOUT => 60,
             CURLOPT_HTTPHEADER => [
-                'Accept: application/json'
+                'Accept: application/json',
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             ]
         ]);
         
@@ -208,15 +209,15 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                     $isError = isset($video['status']) && $video['status'] === 'error';
                     $name = $video['name'] ?? 'Unknown';
                     $thumbnail = $video['download']['thumbnail'] ?? '';
-                    $downloadUrl = $video['download']['url'] ?? '#';
-                    $directDownload = $video['download']['direct_download'] ?? $downloadUrl;
+                    $videoUrl = $video['download']['url'] ?? '#';
+                    $directDownload = $video['download']['direct_download'] ?? $videoUrl;
                 ?>
                 
                 <div class="card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 <?php echo $isError ? 'border-red-500/50' : 'border-purple-500/20'; ?>">
                     
                     <!-- Thumbnail -->
                     <a
-                        href="<?php echo $isError ? '#' : htmlspecialchars($downloadUrl); ?>"
+                        href="<?php echo $isError ? '#' : htmlspecialchars($videoUrl); ?>"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="block relative group overflow-hidden <?php echo $isError ? 'pointer-events-none' : ''; ?>"
@@ -300,20 +301,37 @@ $inputUrl = isset($_POST['url']) ? htmlspecialchars($_POST['url']) : '';
                             <?php endif; ?>
                         </div>
 
-                        <!-- Download Button -->
-                        <a
-                            href="<?php echo htmlspecialchars($directDownload); ?>"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/50"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="2"/>
-                                <polyline points="7 10 12 15 17 10" stroke-width="2"/>
-                                <line x1="12" y1="15" x2="12" y2="3" stroke-width="2"/>
-                            </svg>
-                            <span>Download</span>
-                        </a>
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <!-- Watch Button -->
+                            <a
+                                href="<?php echo htmlspecialchars($videoUrl); ?>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" stroke-width="2"/>
+                                    <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
+                                </svg>
+                                <span>Tonton</span>
+                            </a>
+                            
+                            <!-- Download Button -->
+                            <a
+                                href="<?php echo htmlspecialchars($directDownload); ?>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/50"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="2"/>
+                                    <polyline points="7 10 12 15 17 10" stroke-width="2"/>
+                                    <line x1="12" y1="15" x2="12" y2="3" stroke-width="2"/>
+                                </svg>
+                                <span>Download</span>
+                            </a>
+                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
