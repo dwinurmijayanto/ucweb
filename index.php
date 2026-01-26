@@ -13,73 +13,21 @@
             transform: translateY(-5px);
             box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4);
         }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #a855f7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-<?php
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-
-$videos = [];
-$error = '';
-$shareInfo = null;
-$fetchSummary = null;
-$inputUrl = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
-    $url = trim($_POST['url']);
-    $inputUrl = htmlspecialchars($url);
-    
-    if (empty($url)) {
-        $error = 'Silakan masukkan URL UC Share';
-    } else {
-        try {
-            // Call API Vercel
-            $apiUrl = 'https://ucweb-five.vercel.app/api/?url=' . urlencode($url);
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $apiUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Accept: application/json',
-                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            ]);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            
-            if (curl_errno($ch)) {
-                $error = 'Gagal terhubung ke API: ' . curl_error($ch);
-            } else if ($httpCode !== 200) {
-                $error = 'API Error: HTTP ' . $httpCode;
-            } else {
-                $data = json_decode($response, true);
-                
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    $error = 'Invalid JSON response from API';
-                } else if (isset($data['status']) && $data['status'] === 'success') {
-                    $videos = isset($data['videos']) ? $data['videos'] : [];
-                    $shareInfo = isset($data['share_info']) ? $data['share_info'] : null;
-                    $fetchSummary = isset($data['fetch_summary']) ? $data['fetch_summary'] : null;
-                    
-                    if (empty($videos)) {
-                        $error = 'Tidak ada video yang ditemukan';
-                    }
-                } else {
-                    $error = isset($data['message']) ? $data['message'] : 'Gagal mengambil data dari API';
-                }
-            }
-            
-            curl_close($ch);
-        } catch (Exception $e) {
-            $error = 'Error: ' . $e->getMessage();
-        }
-    }
-}
-?>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
     <div class="max-w-7xl mx-auto">
@@ -97,24 +45,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 
         <!-- Search Form -->
         <div class="mb-10 max-w-5xl mx-auto">
-            <form method="POST" action="" class="relative">
+            <form id="searchForm" class="relative">
                 <input
                     type="text"
-                    name="url"
-                    value="<?php echo $inputUrl; ?>"
+                    id="urlInput"
                     placeholder="Masukkan URL UC Share (contoh: https://drive.ucweb.com/s/079eb21d6f504)"
                     class="w-full px-6 py-5 pr-36 rounded-2xl bg-white/10 backdrop-blur-lg border-2 border-purple-500/30 text-white text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                     required
                 />
                 <button
                     type="submit"
+                    id="searchBtn"
                     class="absolute right-2 top-2 bottom-2 px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg"
                 >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg id="searchIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="11" cy="11" r="8" stroke-width="2"/>
                         <path d="m21 21-4.35-4.35" stroke-width="2"/>
                     </svg>
-                    <span>Search</span>
+                    <div id="loadingSpinner" class="spinner hidden"></div>
+                    <span id="searchText">Search</span>
                 </button>
             </form>
             <p class="text-gray-400 text-sm mt-3 text-center">
@@ -123,72 +72,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
         </div>
 
         <!-- Share Info -->
-        <?php if ($shareInfo): ?>
-        <div class="max-w-5xl mx-auto mb-8">
+        <div id="shareInfo" class="max-w-5xl mx-auto mb-8 hidden">
             <div class="bg-white/5 backdrop-blur-lg rounded-2xl border-2 border-purple-500/30 p-6">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Total Files</div>
-                        <div class="text-white text-2xl font-bold">
-                            <?php echo isset($shareInfo['total_files']) ? $shareInfo['total_files'] : 0; ?>
-                        </div>
+                        <div class="text-white text-2xl font-bold" id="totalFiles">0</div>
                     </div>
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Total Videos</div>
-                        <div class="text-purple-400 text-2xl font-bold">
-                            <?php echo isset($shareInfo['total_videos']) ? $shareInfo['total_videos'] : 0; ?>
-                        </div>
+                        <div class="text-purple-400 text-2xl font-bold" id="totalVideos">0</div>
                     </div>
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Total Size</div>
-                        <div class="text-pink-400 text-2xl font-bold">
-                            <?php echo isset($shareInfo['total_size_mb']) ? number_format($shareInfo['total_size_mb'], 2) : '0.00'; ?> MB
-                        </div>
+                        <div class="text-pink-400 text-2xl font-bold" id="totalSize">0 MB</div>
                     </div>
                     <div>
                         <div class="text-gray-400 text-sm mb-1">Folders Scanned</div>
-                        <div class="text-green-400 text-2xl font-bold">
-                            <?php echo isset($shareInfo['folders_scanned']) ? $shareInfo['folders_scanned'] : 0; ?>
-                        </div>
+                        <div class="text-green-400 text-2xl font-bold" id="foldersScanned">0</div>
                     </div>
                 </div>
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- Fetch Summary -->
-        <?php if ($fetchSummary): ?>
-        <div class="max-w-5xl mx-auto mb-8">
+        <div id="fetchSummary" class="max-w-5xl mx-auto mb-8 hidden">
             <div class="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-lg rounded-2xl border-2 border-green-500/30 p-5">
                 <div class="flex items-center justify-center gap-6 text-center">
                     <div>
                         <div class="text-gray-300 text-sm mb-1">Total Processed</div>
-                        <div class="text-white text-xl font-bold">
-                            <?php echo isset($fetchSummary['total']) ? $fetchSummary['total'] : 0; ?>
-                        </div>
+                        <div class="text-white text-xl font-bold" id="summaryTotal">0</div>
                     </div>
                     <div class="h-10 w-px bg-white/20"></div>
                     <div>
                         <div class="text-gray-300 text-sm mb-1">Success</div>
-                        <div class="text-green-400 text-xl font-bold">
-                            <?php echo isset($fetchSummary['success']) ? $fetchSummary['success'] : 0; ?>
-                        </div>
+                        <div class="text-green-400 text-xl font-bold" id="summarySuccess">0</div>
                     </div>
                     <div class="h-10 w-px bg-white/20"></div>
                     <div>
                         <div class="text-gray-300 text-sm mb-1">Failed</div>
-                        <div class="text-red-400 text-xl font-bold">
-                            <?php echo isset($fetchSummary['failed']) ? $fetchSummary['failed'] : 0; ?>
-                        </div>
+                        <div class="text-red-400 text-xl font-bold" id="summaryFailed">0</div>
                     </div>
                 </div>
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- Error Message -->
-        <?php if (!empty($error)): ?>
-        <div class="max-w-5xl mx-auto mb-8">
+        <div id="errorMessage" class="max-w-5xl mx-auto mb-8 hidden">
             <div class="bg-red-500/20 border-2 border-red-500/50 rounded-2xl px-6 py-4 text-red-200 backdrop-blur-lg">
                 <div class="flex items-center gap-3">
                     <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,165 +126,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                         <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
                         <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
                     </svg>
-                    <span><?php echo $error; ?></span>
+                    <span id="errorText"></span>
                 </div>
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- Videos Grid -->
-        <?php if (!empty($videos)): ?>
-        <div class="space-y-8">
+        <div id="videosContainer" class="hidden space-y-8">
             <div class="flex flex-wrap items-center justify-between gap-4 px-2">
-                <h2 class="text-3xl font-bold text-white">
-                    📹 Found <?php echo count($videos); ?> video<?php echo count($videos) !== 1 ? 's' : ''; ?>
-                </h2>
+                <h2 class="text-3xl font-bold text-white" id="videosTitle">📹 Found 0 videos</h2>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <?php foreach ($videos as $index => $video): ?>
-                <?php 
-                    $isError = isset($video['status']) && $video['status'] === 'error';
-                    $name = isset($video['name']) ? $video['name'] : 'Unknown';
-                    $thumbnail = isset($video['download']['thumbnail']) ? $video['download']['thumbnail'] : '';
-                    $videoUrl = isset($video['download']['url']) ? $video['download']['url'] : '#';
-                    $directDownload = isset($video['download']['direct_download']) ? $video['download']['direct_download'] : $videoUrl;
-                    $sizeMb = isset($video['size_mb']) ? $video['size_mb'] : 0;
-                    $depth = isset($video['depth']) ? $video['depth'] : 0;
-                    $path = isset($video['path']) ? $video['path'] : '';
-                ?>
-                
-                <div class="card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 <?php echo $isError ? 'border-red-500/50' : 'border-purple-500/20'; ?>">
-                    
-                    <a
-                        href="<?php echo $isError ? '#' : htmlspecialchars($videoUrl); ?>"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="block relative group overflow-hidden <?php echo $isError ? 'pointer-events-none' : ''; ?>"
-                    >
-                        <?php if (!$isError && !empty($thumbnail)): ?>
-                        <img
-                            src="<?php echo htmlspecialchars($thumbnail); ?>"
-                            alt="<?php echo htmlspecialchars($name); ?>"
-                            class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-                            onerror="this.parentElement.innerHTML='<div class=\'w-full h-48 bg-gray-700 flex items-center justify-center\'><svg class=\'w-16 h-16 text-gray-500\' fill=\'none\' stroke=\'currentColor\' viewBox=\'0 0 24 24\'><path d=\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\' stroke-width=\'2\'/></svg></div>';"
-                        />
-                        <?php else: ?>
-                        <div class="w-full h-48 bg-gray-700 flex items-center justify-center">
-                            <svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/>
-                            </svg>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!$isError): ?>
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="10" stroke-width="2"/>
-                                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
-                            </svg>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!$isError && isset($video['video_info']['duration_formatted'])): ?>
-                        <div class="absolute top-3 right-3 bg-black/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-sm font-bold">
-                            ⏱️ <?php echo htmlspecialchars($video['video_info']['duration_formatted']); ?>
-                        </div>
-                        <?php endif; ?>
-                        
-                        <?php if (!$isError && $depth > 0): ?>
-                        <div class="absolute top-3 left-3 bg-blue-600/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-xs font-bold">
-                            📁 Level <?php echo $depth; ?>
-                        </div>
-                        <?php endif; ?>
-                    </a>
-
-                    <div class="p-5 space-y-4">
-                        <h3 class="text-white font-bold text-base line-clamp-2 min-h-[3rem]" title="<?php echo htmlspecialchars($name); ?>">
-                            <?php echo htmlspecialchars($name); ?>
-                        </h3>
-
-                        <?php if (!$isError && !empty($path) && $path !== '/' . $name): ?>
-                        <div class="text-gray-400 text-xs truncate" title="<?php echo htmlspecialchars($path); ?>">
-                            📂 <?php echo htmlspecialchars($path); ?>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if ($isError): ?>
-                        <div class="bg-red-500/20 border border-red-500/50 rounded-lg px-3 py-2 text-red-300 text-sm">
-                            ❌ <?php echo htmlspecialchars(isset($video['error']) ? $video['error'] : 'Unknown error'); ?>
-                        </div>
-                        <?php else: ?>
-                        
-                        <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                            <?php if (isset($video['video_info']['resolution']['label'])): ?>
-                            <span class="bg-purple-500/30 text-purple-200 px-3 py-1.5 rounded-full border border-purple-400/30">
-                                🎬 <?php echo htmlspecialchars($video['video_info']['resolution']['label']); ?>
-                            </span>
-                            <?php endif; ?>
-                            
-                            <span class="bg-blue-500/30 text-blue-200 px-3 py-1.5 rounded-full border border-blue-400/30">
-                                💾 <?php echo number_format($sizeMb, 2); ?> MB
-                            </span>
-                            
-                            <?php if (isset($video['video_info']['fps'])): ?>
-                            <span class="bg-green-500/30 text-green-200 px-3 py-1.5 rounded-full border border-green-400/30">
-                                🎞️ <?php echo htmlspecialchars($video['video_info']['fps']); ?> FPS
-                            </span>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <a
-                                href="<?php echo htmlspecialchars($videoUrl); ?>"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <circle cx="12" cy="12" r="10" stroke-width="2"/>
-                                    <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
-                                </svg>
-                                <span>Tonton</span>
-                            </a>
-                            
-                            <a
-                                href="<?php echo htmlspecialchars($directDownload); ?>"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/50"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="2"/>
-                                    <polyline points="7 10 12 15 17 10" stroke-width="2"/>
-                                    <line x1="12" y1="15" x2="12" y2="3" stroke-width="2"/>
-                                </svg>
-                                <span>Download</span>
-                            </a>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
+            <div id="videosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Videos will be inserted here -->
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- Empty State -->
-        <?php if (empty($videos) && empty($error)): ?>
-        <div class="text-center py-20">
+        <div id="emptyState" class="text-center py-20">
             <svg class="w-32 h-32 text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <h3 class="text-gray-300 text-2xl font-bold mb-3">
-                Siap untuk download?
-            </h3>
-            <p class="text-gray-400 text-lg mb-2">
-                Masukkan URL UC Share di atas untuk memulai
-            </p>
-            <p class="text-gray-500 text-sm">
-                Contoh: https://drive.ucweb.com/s/079eb21d6f504
-            </p>
+            <h3 class="text-gray-300 text-2xl font-bold mb-3">Siap untuk download?</h3>
+            <p class="text-gray-400 text-lg mb-2">Masukkan URL UC Share di atas untuk memulai</p>
+            <p class="text-gray-500 text-sm">Contoh: https://drive.ucweb.com/s/079eb21d6f504</p>
             
             <div class="mt-12 max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white/5 backdrop-blur rounded-xl p-6 border border-purple-500/20">
@@ -374,16 +169,198 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 </div>
             </div>
         </div>
-        <?php endif; ?>
 
+        <!-- Footer -->
         <div class="text-center mt-16 pb-8">
-            <p class="text-gray-500 text-sm">
-                Made with ❤️ using UC Share API
-            </p>
+            <p class="text-gray-500 text-sm">Made with ❤️ using UC Share API</p>
         </div>
 
     </div>
 </div>
+
+<script>
+document.getElementById('searchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const urlInput = document.getElementById('urlInput');
+    const url = urlInput.value.trim();
+    
+    if (!url) {
+        showError('Silakan masukkan URL UC Share');
+        return;
+    }
+    
+    // Show loading
+    setLoading(true);
+    hideAll();
+    
+    try {
+        const apiUrl = `https://ucweb-five.vercel.app/api/?url=${encodeURIComponent(url)}`;
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        
+        setLoading(false);
+        
+        if (data.status === 'success' && data.videos && data.videos.length > 0) {
+            displayVideos(data);
+        } else {
+            showError(data.message || 'Tidak ada video yang ditemukan');
+        }
+    } catch (error) {
+        setLoading(false);
+        showError('Gagal mengambil data dari API: ' + error.message);
+    }
+});
+
+function setLoading(loading) {
+    const searchBtn = document.getElementById('searchBtn');
+    const searchIcon = document.getElementById('searchIcon');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const searchText = document.getElementById('searchText');
+    
+    if (loading) {
+        searchBtn.disabled = true;
+        searchIcon.classList.add('hidden');
+        loadingSpinner.classList.remove('hidden');
+        searchText.textContent = 'Loading...';
+    } else {
+        searchBtn.disabled = false;
+        searchIcon.classList.remove('hidden');
+        loadingSpinner.classList.add('hidden');
+        searchText.textContent = 'Search';
+    }
+}
+
+function hideAll() {
+    document.getElementById('shareInfo').classList.add('hidden');
+    document.getElementById('fetchSummary').classList.add('hidden');
+    document.getElementById('errorMessage').classList.add('hidden');
+    document.getElementById('videosContainer').classList.add('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+}
+
+function showError(message) {
+    hideAll();
+    document.getElementById('errorText').textContent = message;
+    document.getElementById('errorMessage').classList.remove('hidden');
+}
+
+function displayVideos(data) {
+    hideAll();
+    
+    // Show share info
+    if (data.share_info) {
+        const info = data.share_info;
+        document.getElementById('totalFiles').textContent = info.total_files || 0;
+        document.getElementById('totalVideos').textContent = info.total_videos || 0;
+        document.getElementById('totalSize').textContent = (info.total_size_mb || 0).toFixed(2) + ' MB';
+        document.getElementById('foldersScanned').textContent = info.folders_scanned || 0;
+        document.getElementById('shareInfo').classList.remove('hidden');
+    }
+    
+    // Show fetch summary
+    if (data.fetch_summary) {
+        const summary = data.fetch_summary;
+        document.getElementById('summaryTotal').textContent = summary.total || 0;
+        document.getElementById('summarySuccess').textContent = summary.success || 0;
+        document.getElementById('summaryFailed').textContent = summary.failed || 0;
+        document.getElementById('fetchSummary').classList.remove('hidden');
+    }
+    
+    // Show videos
+    const videos = data.videos || [];
+    const videosTitle = document.getElementById('videosTitle');
+    videosTitle.textContent = `📹 Found ${videos.length} video${videos.length !== 1 ? 's' : ''}`;
+    
+    const videosGrid = document.getElementById('videosGrid');
+    videosGrid.innerHTML = '';
+    
+    videos.forEach((video, index) => {
+        const card = createVideoCard(video, index);
+        videosGrid.appendChild(card);
+    });
+    
+    document.getElementById('videosContainer').classList.remove('hidden');
+}
+
+function createVideoCard(video, index) {
+    const isError = video.status === 'error';
+    const name = video.name || 'Unknown';
+    const thumbnail = video.download?.thumbnail || '';
+    const videoUrl = video.download?.url || '#';
+    const directDownload = video.download?.direct_download || videoUrl;
+    const sizeMb = video.size_mb || 0;
+    const depth = video.depth || 0;
+    const path = video.path || '';
+    
+    const card = document.createElement('div');
+    card.className = `card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 ${isError ? 'border-red-500/50' : 'border-purple-500/20'}`;
+    
+    const thumbnailHtml = !isError && thumbnail ? 
+        `<img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(name)}" class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gray-700 flex items-center justify-center\\'><svg class=\\'w-16 h-16 text-gray-500\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path d=\\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\\' stroke-width=\\'2\\'/></svg></div>';">` :
+        `<div class="w-full h-48 bg-gray-700 flex items-center justify-center"><svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/></svg></div>`;
+    
+    const durationBadge = !isError && video.video_info?.duration_formatted ? 
+        `<div class="absolute top-3 right-3 bg-black/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-sm font-bold">⏱️ ${escapeHtml(video.video_info.duration_formatted)}</div>` : '';
+    
+    const levelBadge = !isError && depth > 0 ? 
+        `<div class="absolute top-3 left-3 bg-blue-600/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-xs font-bold">📁 Level ${depth}</div>` : '';
+    
+    const pathInfo = !isError && path && path !== '/' + name ? 
+        `<div class="text-gray-400 text-xs truncate" title="${escapeHtml(path)}">📂 ${escapeHtml(path)}</div>` : '';
+    
+    const errorContent = isError ? 
+        `<div class="bg-red-500/20 border border-red-500/50 rounded-lg px-3 py-2 text-red-300 text-sm">❌ ${escapeHtml(video.error || 'Unknown error')}</div>` : '';
+    
+    const resolutionBadge = video.video_info?.resolution?.label ? 
+        `<span class="bg-purple-500/30 text-purple-200 px-3 py-1.5 rounded-full border border-purple-400/30">🎬 ${escapeHtml(video.video_info.resolution.label)}</span>` : '';
+    
+    const fpsBadge = video.video_info?.fps ? 
+        `<span class="bg-green-500/30 text-green-200 px-3 py-1.5 rounded-full border border-green-400/30">🎞️ ${escapeHtml(video.video_info.fps)} FPS</span>` : '';
+    
+    const actionButtons = !isError ? `
+        <div class="grid grid-cols-2 gap-2">
+            <a href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" class="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
+                <span>Tonton</span>
+            </a>
+            <a href="${escapeHtml(directDownload)}" target="_blank" rel="noopener noreferrer" class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/50">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke-width="2"/><polyline points="7 10 12 15 17 10" stroke-width="2"/><line x1="12" y1="15" x2="12" y2="3" stroke-width="2"/></svg>
+                <span>Download</span>
+            </a>
+        </div>` : '';
+    
+    card.innerHTML = `
+        <a href="${isError ? '#' : escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" class="block relative group overflow-hidden ${isError ? 'pointer-events-none' : ''}">
+            ${thumbnailHtml}
+            ${!isError ? '<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"><svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg></div>' : ''}
+            ${durationBadge}
+            ${levelBadge}
+        </a>
+        <div class="p-5 space-y-4">
+            <h3 class="text-white font-bold text-base line-clamp-2 min-h-[3rem]" title="${escapeHtml(name)}">${escapeHtml(name)}</h3>
+            ${pathInfo}
+            ${errorContent}
+            ${!isError ? `
+                <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                    ${resolutionBadge}
+                    <span class="bg-blue-500/30 text-blue-200 px-3 py-1.5 rounded-full border border-blue-400/30">💾 ${sizeMb.toFixed(2)} MB</span>
+                    ${fpsBadge}
+                </div>
+                ${actionButtons}
+            ` : ''}
+        </div>
+    `;
+    
+    return card;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
 
 </body>
 </html>
