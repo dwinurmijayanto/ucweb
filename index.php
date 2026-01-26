@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
         $error = 'Silakan masukkan URL UC Share';
     } else {
         // Call API lokal (ganti dengan URL API Anda)
-        $apiUrl = 'http://localhost/api/index.php?url=' . urlencode($url);
+        $apiUrl = 'https://ucweb-five.vercel.app/api/?url=' . urlencode($url);
         
         $ch = curl_init();
         curl_setopt_array($ch, [
