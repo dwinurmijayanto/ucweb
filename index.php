@@ -6,32 +6,16 @@
     <title>UC Share Downloader</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4);
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid #a855f7;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(168, 85, 247, 0.4); }
+        .spinner { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #a855f7; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
     </style>
 </head>
 <body>
-
 <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
     <div class="max-w-7xl mx-auto">
-        
+
         <!-- Header -->
         <div class="text-center mb-12">
             <div class="flex items-center justify-center gap-4 mb-4">
@@ -46,18 +30,12 @@
         <!-- Search Form -->
         <div class="mb-10 max-w-5xl mx-auto">
             <form id="searchForm" class="relative">
-                <input
-                    type="text"
-                    id="urlInput"
+                <input type="text" id="urlInput"
                     placeholder="Masukkan URL UC Share (contoh: https://drive.ucweb.com/s/xxxxxxxxx)"
                     class="w-full px-6 py-5 pr-36 rounded-2xl bg-white/10 backdrop-blur-lg border-2 border-purple-500/30 text-white text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    required
-                />
-                <button
-                    type="submit"
-                    id="searchBtn"
-                    class="absolute right-2 top-2 bottom-2 px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg"
-                >
+                    required/>
+                <button type="submit" id="searchBtn"
+                    class="absolute right-2 top-2 bottom-2 px-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg">
                     <svg id="searchIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="11" cy="11" r="8" stroke-width="2"/>
                         <path d="m21 21-4.35-4.35" stroke-width="2"/>
@@ -137,8 +115,27 @@
                 <h2 class="text-3xl font-bold text-white" id="videosTitle">📹 Found 0 videos</h2>
             </div>
 
-            <div id="videosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- Videos will be inserted here -->
+            <div id="videosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+
+            <!-- Single URL Textarea at the bottom -->
+            <div class="bg-white/5 backdrop-blur-lg rounded-2xl border-2 border-purple-500/30 p-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-white text-xl font-bold">🔗 Semua URL Tonton</h3>
+                        <p class="text-gray-400 text-sm mt-1" id="urlCount">0 URL</p>
+                    </div>
+                    <button onclick="copyUrls()"
+                        class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 active:scale-95 text-white rounded-xl font-bold transition-all shadow-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-width="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-width="2"/>
+                        </svg>
+                        <span id="copyBtnText">Copy Semua URL</span>
+                    </button>
+                </div>
+                <textarea id="watchUrlList" readonly rows="10"
+                    class="w-full px-4 py-3 rounded-xl bg-black/30 border border-purple-500/30 text-green-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
+                    placeholder="URL akan muncul di sini setelah pencarian..."></textarea>
             </div>
         </div>
 
@@ -150,7 +147,6 @@
             <h3 class="text-gray-300 text-2xl font-bold mb-3">Siap untuk download?</h3>
             <p class="text-gray-400 text-lg mb-2">Masukkan URL UC Share di atas untuk memulai</p>
             <p class="text-gray-500 text-sm">Contoh: https://drive.ucweb.com/s/xxxxxxxxxx</p>
-            
             <div class="mt-12 max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white/5 backdrop-blur rounded-xl p-6 border border-purple-500/20">
                     <div class="text-4xl mb-3">🚀</div>
@@ -181,26 +177,16 @@
 <script>
 document.getElementById('searchForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    const urlInput = document.getElementById('urlInput');
-    const url = urlInput.value.trim();
-    
-    if (!url) {
-        showError('Silakan masukkan URL UC Share');
-        return;
-    }
-    
-    // Show loading
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) { showError('Silakan masukkan URL UC Share'); return; }
+
     setLoading(true);
     hideAll();
-    
+
     try {
-        const apiUrl = `https://ucweb-five.vercel.app/api/?url=${encodeURIComponent(url)}`;
-        const response = await fetch(apiUrl);
+        const response = await fetch(`https://ucweb-five.vercel.app/api/?url=${encodeURIComponent(url)}`);
         const data = await response.json();
-        
         setLoading(false);
-        
         if (data.status === 'success' && data.videos && data.videos.length > 0) {
             displayVideos(data);
         } else {
@@ -217,7 +203,6 @@ function setLoading(loading) {
     const searchIcon = document.getElementById('searchIcon');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const searchText = document.getElementById('searchText');
-    
     if (loading) {
         searchBtn.disabled = true;
         searchIcon.classList.add('hidden');
@@ -232,11 +217,9 @@ function setLoading(loading) {
 }
 
 function hideAll() {
-    document.getElementById('shareInfo').classList.add('hidden');
-    document.getElementById('fetchSummary').classList.add('hidden');
-    document.getElementById('errorMessage').classList.add('hidden');
-    document.getElementById('videosContainer').classList.add('hidden');
-    document.getElementById('emptyState').classList.add('hidden');
+    ['shareInfo','fetchSummary','errorMessage','videosContainer','emptyState'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+    });
 }
 
 function showError(message) {
@@ -247,40 +230,58 @@ function showError(message) {
 
 function displayVideos(data) {
     hideAll();
-    
-    // Show share info
+
     if (data.share_info) {
-        const info = data.share_info;
-        document.getElementById('totalFiles').textContent = info.total_files || 0;
-        document.getElementById('totalVideos').textContent = info.total_videos || 0;
-        document.getElementById('totalSize').textContent = (info.total_size_mb || 0).toFixed(2) + ' MB';
-        document.getElementById('foldersScanned').textContent = info.folders_scanned || 0;
+        const i = data.share_info;
+        document.getElementById('totalFiles').textContent = i.total_files || 0;
+        document.getElementById('totalVideos').textContent = i.total_videos || 0;
+        document.getElementById('totalSize').textContent = (i.total_size_mb || 0).toFixed(2) + ' MB';
+        document.getElementById('foldersScanned').textContent = i.folders_scanned || 0;
         document.getElementById('shareInfo').classList.remove('hidden');
     }
-    
-    // Show fetch summary
+
     if (data.fetch_summary) {
-        const summary = data.fetch_summary;
-        document.getElementById('summaryTotal').textContent = summary.total || 0;
-        document.getElementById('summarySuccess').textContent = summary.success || 0;
-        document.getElementById('summaryFailed').textContent = summary.failed || 0;
+        const s = data.fetch_summary;
+        document.getElementById('summaryTotal').textContent = s.total || 0;
+        document.getElementById('summarySuccess').textContent = s.success || 0;
+        document.getElementById('summaryFailed').textContent = s.failed || 0;
         document.getElementById('fetchSummary').classList.remove('hidden');
     }
-    
-    // Show videos
+
     const videos = data.videos || [];
-    const videosTitle = document.getElementById('videosTitle');
-    videosTitle.textContent = `📹 Found ${videos.length} video${videos.length !== 1 ? 's' : ''}`;
-    
+    document.getElementById('videosTitle').textContent = `📹 Found ${videos.length} video${videos.length !== 1 ? 's' : ''}`;
+
     const videosGrid = document.getElementById('videosGrid');
     videosGrid.innerHTML = '';
-    
+
+    const watchUrls = [];
     videos.forEach((video, index) => {
-        const card = createVideoCard(video, index);
-        videosGrid.appendChild(card);
+        videosGrid.appendChild(createVideoCard(video, index));
+        if (video.status !== 'error' && video.download?.url) {
+            watchUrls.push(video.download.url);
+        }
     });
-    
+
+    document.getElementById('watchUrlList').value = watchUrls.join('\n');
+    document.getElementById('urlCount').textContent = `${watchUrls.length} URL`;
     document.getElementById('videosContainer').classList.remove('hidden');
+}
+
+function copyUrls() {
+    const content = document.getElementById('watchUrlList').value;
+    if (!content.trim()) return;
+    navigator.clipboard.writeText(content).then(() => {
+        const btn = document.getElementById('copyBtnText');
+        btn.textContent = '✅ Tersalin!';
+        setTimeout(() => { btn.textContent = 'Copy Semua URL'; }, 2000);
+    }).catch(() => {
+        const ta = document.getElementById('watchUrlList');
+        ta.select();
+        document.execCommand('copy');
+        const btn = document.getElementById('copyBtnText');
+        btn.textContent = '✅ Tersalin!';
+        setTimeout(() => { btn.textContent = 'Copy Semua URL'; }, 2000);
+    });
 }
 
 function createVideoCard(video, index) {
@@ -292,32 +293,32 @@ function createVideoCard(video, index) {
     const sizeMb = video.size_mb || 0;
     const depth = video.depth || 0;
     const path = video.path || '';
-    
+
     const card = document.createElement('div');
     card.className = `card-hover bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden border-2 ${isError ? 'border-red-500/50' : 'border-purple-500/20'}`;
-    
-    const thumbnailHtml = !isError && thumbnail ? 
+
+    const thumbnailHtml = !isError && thumbnail ?
         `<img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(name)}" class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gray-700 flex items-center justify-center\\'><svg class=\\'w-16 h-16 text-gray-500\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path d=\\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\\' stroke-width=\\'2\\'/></svg></div>';">` :
         `<div class="w-full h-48 bg-gray-700 flex items-center justify-center"><svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"/></svg></div>`;
-    
-    const durationBadge = !isError && video.video_info?.duration_formatted ? 
+
+    const durationBadge = !isError && video.video_info?.duration_formatted ?
         `<div class="absolute top-3 right-3 bg-black/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-sm font-bold">⏱️ ${escapeHtml(video.video_info.duration_formatted)}</div>` : '';
-    
-    const levelBadge = !isError && depth > 0 ? 
+
+    const levelBadge = !isError && depth > 0 ?
         `<div class="absolute top-3 left-3 bg-blue-600/80 backdrop-blur px-3 py-1.5 rounded-lg text-white text-xs font-bold">📁 Level ${depth}</div>` : '';
-    
-    const pathInfo = !isError && path && path !== '/' + name ? 
+
+    const pathInfo = !isError && path && path !== '/' + name ?
         `<div class="text-gray-400 text-xs truncate" title="${escapeHtml(path)}">📂 ${escapeHtml(path)}</div>` : '';
-    
-    const errorContent = isError ? 
+
+    const errorContent = isError ?
         `<div class="bg-red-500/20 border border-red-500/50 rounded-lg px-3 py-2 text-red-300 text-sm">❌ ${escapeHtml(video.error || 'Unknown error')}</div>` : '';
-    
-    const resolutionBadge = video.video_info?.resolution?.label ? 
+
+    const resolutionBadge = video.video_info?.resolution?.label ?
         `<span class="bg-purple-500/30 text-purple-200 px-3 py-1.5 rounded-full border border-purple-400/30">🎬 ${escapeHtml(video.video_info.resolution.label)}</span>` : '';
-    
-    const fpsBadge = video.video_info?.fps ? 
+
+    const fpsBadge = video.video_info?.fps ?
         `<span class="bg-green-500/30 text-green-200 px-3 py-1.5 rounded-full border border-green-400/30">🎞️ ${escapeHtml(video.video_info.fps)} FPS</span>` : '';
-    
+
     const actionButtons = !isError ? `
         <div class="grid grid-cols-2 gap-2">
             <a href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" class="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white py-3 rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-500/50">
@@ -329,7 +330,7 @@ function createVideoCard(video, index) {
                 <span>Download</span>
             </a>
         </div>` : '';
-    
+
     card.innerHTML = `
         <a href="${isError ? '#' : escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer" class="block relative group overflow-hidden ${isError ? 'pointer-events-none' : ''}">
             ${thumbnailHtml}
@@ -351,7 +352,6 @@ function createVideoCard(video, index) {
             ` : ''}
         </div>
     `;
-    
     return card;
 }
 
@@ -361,6 +361,5 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 </script>
-
 </body>
 </html>
