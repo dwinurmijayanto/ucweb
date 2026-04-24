@@ -47,6 +47,16 @@
         #tagStrip.visible { display: flex; flex-wrap: wrap; gap: 6px; }
         #parallelWrap { display: none; }
         #parallelWrap.visible { display: flex; }
+
+        /* URL Groups */
+        .url-group { border-radius: 16px; overflow: hidden; border: 1px solid rgba(168,85,247,0.15); }
+        .url-group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(168,85,247,0.1); border-bottom: 1px solid rgba(168,85,247,0.12); gap: 8px; flex-wrap: wrap; }
+        .url-group-source { font-family: 'Space Mono', monospace; font-size: 10px; color: #a78bfa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+        .url-group-textarea { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); color: #86efac; font-family: 'Space Mono', monospace; font-size: 11px; border: none; outline: none; resize-y; min-height: 70px; }
+        .url-group-textarea:focus { background: rgba(0,0,0,0.3); }
+        .copy-btn-sm { flex-shrink: 0; display: flex; align-items: center; gap: 5px; padding: 4px 10px; background: rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.3); border-radius: 20px; color: #c084fc; font-size: 10px; font-family: 'Space Mono', monospace; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .copy-btn-sm:hover { background: rgba(168,85,247,0.35); color: white; }
+        .badge-count { font-size: 10px; font-family: 'Space Mono', monospace; padding: 2px 8px; border-radius: 20px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.25); color: #c084fc; white-space: nowrap; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-950 via-[#190a2d] to-slate-950">
@@ -65,11 +75,9 @@
         <p class="text-gray-500 text-sm mono">Single · Bulk · Auto Detect · Parallel · Share</p>
     </div>
 
-    <!-- ═══════════ UNIFIED FORM ═══════════ -->
+    <!-- UNIFIED FORM -->
     <div class="max-w-4xl mx-auto mb-8">
         <div class="glass-p rounded-2xl input-glow transition-all duration-300">
-
-            <!-- Main textarea -->
             <textarea
                 id="mainInput"
                 rows="4"
@@ -79,18 +87,12 @@
                 onpaste="setTimeout(onInputChange,30)"
             ></textarea>
 
-            <!-- Auto-detected URL tags (shown only when URLs found inside free text) -->
             <div id="tagStrip" class="px-5 pb-3 border-t border-purple-500/10 pt-3"></div>
 
-            <!-- Toolbar -->
             <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-purple-500/15 rounded-b-2xl">
-
-                <!-- Left -->
                 <div class="flex items-center gap-3 flex-wrap">
                     <span id="urlBadge" class="mono text-xs text-gray-500">0 URL</span>
-
                     <span id="modeBadge" class="mono text-xs hidden px-2 py-0.5 rounded-full border"></span>
-
                     <div id="parallelWrap" class="items-center gap-1.5">
                         <label class="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" id="parallelOn" checked class="w-3.5 h-3.5 rounded accent-purple-500">
@@ -103,8 +105,6 @@
                         </select>
                     </div>
                 </div>
-
-                <!-- Right -->
                 <div class="flex items-center gap-2">
                     <button onclick="pasteClipboard()" class="flex items-center gap-1.5 text-gray-400 hover:text-white text-xs px-3 py-2 glass rounded-xl transition-all">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-width="2"/></svg>
@@ -162,11 +162,12 @@
 
         <div id="videosGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
 
+        <!-- URL Groups Section -->
         <div class="glass-p rounded-2xl p-5">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
-                    <h3 class="text-white font-bold text-sm">🔗 Semua URL Tonton</h3>
-                    <p class="text-gray-500 text-xs mono mt-0.5" id="urlCount">0 URL</p>
+                    <h3 class="text-white font-bold text-sm">🔗 URL per Sumber</h3>
+                    <p class="text-gray-500 text-xs mono mt-0.5" id="urlCount">0 URL dari 0 sumber</p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="copyAllUrls()" class="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl text-xs font-bold transition-all">
@@ -177,9 +178,8 @@
                     <button onclick="saveJson()" class="px-3 py-2 glass text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all">.json</button>
                 </div>
             </div>
-            <textarea id="urlList" readonly rows="8"
-                class="w-full px-4 py-3 rounded-xl bg-black/20 border border-purple-500/15 text-green-300 text-xs mono focus:outline-none resize-y"
-                placeholder="URL akan muncul di sini..."></textarea>
+            <!-- Per-source URL groups rendered here -->
+            <div id="urlGroupsContainer" class="space-y-3"></div>
         </div>
     </div>
 
@@ -231,9 +231,12 @@
 </div>
 
 <script>
-const UC_RE = /https?:\/\/(?:drive\.ucweb\.com|ucshare\.[a-z]+)\/s\/[A-Za-z0-9_%-]+/gi;
+const UC_RE = /https?:\/\/(?:drive\.ucweb\.com|ucshare\.[a-z]+|uc-share\.com)\/s\/[A-Za-z0-9_?&=%-]+/gi;
 
+// allVideos: flat array of all video objects
+// sourceGroups: Map of sourceUrl -> { videos: [], info: {} }
 let allVideos = [];
+let sourceGroups = new Map(); // key = original UC Share URL, value = { label, videos: [] }
 let detectedUrls = [];
 let running = false;
 
@@ -245,7 +248,7 @@ function onInputChange() {
     detectedUrls = found;
 
     const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-    const pureLines = lines.filter(l => UC_RE.test(l) && l.startsWith('http'));
+    const pureLines = lines.filter(l => { UC_RE.lastIndex = 0; return UC_RE.test(l) && l.startsWith('http'); });
     UC_RE.lastIndex = 0;
 
     const urlBadge = document.getElementById('urlBadge');
@@ -262,7 +265,6 @@ function onInputChange() {
         return;
     }
 
-    // Mode badge
     modeBadge.classList.remove('hidden');
     if (found.length === 1 && pureLines.length >= 1) {
         modeBadge.textContent = '🔗 Single';
@@ -275,18 +277,12 @@ function onInputChange() {
         modeBadge.className = 'mono text-xs px-2 py-0.5 rounded-full border bg-pink-500/15 border-pink-500/30 text-pink-300';
     }
 
-    // Parallel controls
     if (found.length > 1) parallelWrap.classList.add('visible');
     else parallelWrap.classList.remove('visible');
 
-    // Tag strip for auto-detect mode
     const isAutoDetect = found.length > 0 && pureLines.length < found.length;
-    if (isAutoDetect) {
-        tagStrip.classList.add('visible');
-        renderTags();
-    } else {
-        tagStrip.classList.remove('visible');
-    }
+    if (isAutoDetect) { tagStrip.classList.add('visible'); renderTags(); }
+    else tagStrip.classList.remove('visible');
 }
 
 function renderTags() {
@@ -307,9 +303,7 @@ function removeTag(i) {
         document.getElementById('tagStrip').classList.remove('visible');
         document.getElementById('modeBadge').classList.add('hidden');
         document.getElementById('parallelWrap').classList.remove('visible');
-    } else {
-        renderTags();
-    }
+    } else renderTags();
 }
 
 async function pasteClipboard() {
@@ -339,6 +333,7 @@ async function runDownload() {
     ['statsBar','errorMsg','resultsSection'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById('emptyState').classList.add('hidden');
     allVideos = [];
+    sourceGroups = new Map();
 
     const urls = [...detectedUrls];
     const parallel = document.getElementById('parallelOn').checked;
@@ -350,8 +345,9 @@ async function runDownload() {
             const data = await fetchApi(urls[0]);
             if (data.status === 'success' && data.videos?.length) {
                 allVideos = data.videos;
+                sourceGroups.set(urls[0], { label: labelFromUrl(urls[0]), videos: data.videos });
                 renderStats(data.share_info);
-                renderVideos(data.videos);
+                renderVideos(allVideos);
             } else {
                 showError(data.message || 'Tidak ada video ditemukan');
             }
@@ -415,6 +411,7 @@ async function runParallel(urls, workers) {
                     .then(d => {
                         if (d.status === 'success' && d.videos?.length) {
                             allVideos.push(...d.videos);
+                            sourceGroups.set(u, { label: labelFromUrl(u), videos: d.videos });
                             setRow(i, 'done', `${d.videos.length} video`);
                         } else setRow(i, 'error', (d.message || 'error').slice(0,24));
                     })
@@ -438,6 +435,7 @@ async function runSequential(urls) {
             const d = await fetchApi(urls[i]);
             if (d.status === 'success' && d.videos?.length) {
                 allVideos.push(...d.videos);
+                sourceGroups.set(urls[i], { label: labelFromUrl(urls[i]), videos: d.videos });
                 setRow(i, 'done', `${d.videos.length} video`);
             } else setRow(i, 'error', (d.message || 'error').slice(0,24));
         } catch(e) { setRow(i, 'error', e.message.slice(0,24)); }
@@ -459,14 +457,77 @@ function renderVideos(videos) {
     document.getElementById('resultsTitle').textContent = `📹 ${videos.length} video${videos.length!==1?'s':''} ditemukan`;
     const grid = document.getElementById('videosGrid');
     grid.innerHTML = '';
-    const watchUrls = [];
-    videos.forEach((v, i) => {
-        grid.appendChild(makeCard(v, i));
-        if (v.status !== 'error' && v.download?.url) watchUrls.push(v.download.url);
-    });
-    document.getElementById('urlList').value = watchUrls.join('\n');
-    document.getElementById('urlCount').textContent = `${watchUrls.length} URL`;
+    videos.forEach((v, i) => grid.appendChild(makeCard(v, i)));
+
+    renderUrlGroups();
     document.getElementById('resultsSection').classList.remove('hidden');
+}
+
+/* ══════════ URL GROUPS ══════════ */
+function renderUrlGroups() {
+    const container = document.getElementById('urlGroupsContainer');
+    container.innerHTML = '';
+
+    let totalUrls = 0;
+    const totalSources = sourceGroups.size;
+
+    // If only one source, still show grouped but without source label clutter
+    sourceGroups.forEach((group, sourceUrl) => {
+        const watchUrls = group.videos
+            .filter(v => v.status !== 'error' && v.download?.url)
+            .map(v => v.download.url);
+
+        totalUrls += watchUrls.length;
+
+        if (watchUrls.length === 0) return;
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'url-group fade-in';
+
+        const shortSrc = shortUrl(sourceUrl);
+        const groupId = 'urlg_' + Math.random().toString(36).slice(2);
+        const copyBtnId = 'cpybtn_' + Math.random().toString(36).slice(2);
+
+        groupEl.innerHTML = `
+            <div class="url-group-header">
+                <div class="flex items-center gap-2 min-w-0">
+                    <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.1-1.1" stroke-width="2"/>
+                    </svg>
+                    <span class="url-group-source" title="${escHtml(sourceUrl)}">${escHtml(shortSrc)}</span>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="badge-count">${watchUrls.length} URL</span>
+                    <button id="${copyBtnId}" onclick="copyGroup('${groupId}','${copyBtnId}')"
+                        class="copy-btn-sm">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-width="2"/></svg>
+                        Copy
+                    </button>
+                </div>
+            </div>
+            <textarea id="${groupId}" readonly
+                class="url-group-textarea"
+                style="min-height:${Math.min(watchUrls.length * 22 + 20, 160)}px"
+            >${watchUrls.join('\n')}</textarea>
+        `;
+
+        container.appendChild(groupEl);
+    });
+
+    document.getElementById('urlCount').textContent = `${totalUrls} URL dari ${totalSources} sumber`;
+}
+
+function copyGroup(taId, btnId) {
+    const val = document.getElementById(taId)?.value;
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(() => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2"/></svg> Tersalin!`;
+        setTimeout(() => {
+            btn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-width="2"/></svg> Copy`;
+        }, 2000);
+    });
 }
 
 function makeCard(v, idx) {
@@ -525,7 +586,7 @@ function openShare() { document.getElementById('shareModal').classList.remove('h
 function closeShare() { document.getElementById('shareModal').classList.add('hidden'); document.getElementById('shareStatus').classList.add('hidden'); }
 
 async function doShare(type) {
-    const urls = document.getElementById('urlList').value;
+    const urls = getAllUrlsText();
     const st = document.getElementById('shareStatus');
     const flash = m => { st.textContent = m; st.classList.remove('hidden'); setTimeout(() => st.classList.add('hidden'), 3000); };
     if (type === 'copy') { await navigator.clipboard.writeText(urls); flash('✅ Disalin!'); }
@@ -539,7 +600,7 @@ async function doShare(type) {
 
 /* ══════════ UTILS ══════════ */
 async function fetchApi(url) {
-    const r = await fetch(`https://ucweb-five.vercel.app/api/?url=${encodeURIComponent(url)}`);
+    const r = await fetch(`./api/?url=${encodeURIComponent(url)}`);
     return r.json();
 }
 
@@ -549,8 +610,19 @@ function showError(msg) {
     document.getElementById('emptyState').classList.add('hidden');
 }
 
+// Collect all watch URLs across all groups as flat text
+function getAllUrlsText() {
+    const lines = [];
+    sourceGroups.forEach(group => {
+        group.videos
+            .filter(v => v.status !== 'error' && v.download?.url)
+            .forEach(v => lines.push(v.download.url));
+    });
+    return lines.join('\n');
+}
+
 function copyAllUrls() {
-    const v = document.getElementById('urlList').value;
+    const v = getAllUrlsText();
     if (!v.trim()) return;
     navigator.clipboard.writeText(v).then(() => {
         const el = document.getElementById('copyTxt');
@@ -560,7 +632,7 @@ function copyAllUrls() {
 }
 
 function saveTxt() {
-    const v = document.getElementById('urlList').value;
+    const v = getAllUrlsText();
     if (!v.trim()) return;
     dlBlob(new Blob([v], { type: 'text/plain' }), 'uc-share-urls.txt');
 }
@@ -581,8 +653,20 @@ function escHtml(s) {
 }
 
 function shortUrl(url) {
-    try { const p = new URL(url).pathname.split('/').filter(Boolean); return (p[p.length-1] || url).slice(-20); }
-    catch { return String(url).slice(-20); }
+    try {
+        const u = new URL(url);
+        const p = u.pathname.split('/').filter(Boolean);
+        const slug = p[p.length-1] || '';
+        return u.hostname.replace('drive.ucweb.com','ucweb').replace('uc-share.com','uc-share') + '/…/' + slug.slice(0,12);
+    } catch { return String(url).slice(-24); }
+}
+
+function labelFromUrl(url) {
+    try {
+        const u = new URL(url);
+        const p = u.pathname.split('/').filter(Boolean);
+        return p[p.length-1] || url;
+    } catch { return url; }
 }
 
 // Ctrl+Enter to submit
