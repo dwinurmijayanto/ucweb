@@ -52,11 +52,18 @@
         .url-group { border-radius: 16px; overflow: hidden; border: 1px solid rgba(168,85,247,0.15); }
         .url-group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(168,85,247,0.1); border-bottom: 1px solid rgba(168,85,247,0.12); gap: 8px; flex-wrap: wrap; }
         .url-group-source { font-family: 'Space Mono', monospace; font-size: 10px; color: #a78bfa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-        .url-group-textarea { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); color: #86efac; font-family: 'Space Mono', monospace; font-size: 11px; border: none; outline: none; resize-y; min-height: 70px; }
+        .url-group-textarea { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); color: #86efac; font-family: 'Space Mono', monospace; font-size: 11px; border: none; outline: none; resize: vertical; min-height: 70px; }
         .url-group-textarea:focus { background: rgba(0,0,0,0.3); }
         .copy-btn-sm { flex-shrink: 0; display: flex; align-items: center; gap: 5px; padding: 4px 10px; background: rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.3); border-radius: 20px; color: #c084fc; font-size: 10px; font-family: 'Space Mono', monospace; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .copy-btn-sm:hover { background: rgba(168,85,247,0.35); color: white; }
         .badge-count { font-size: 10px; font-family: 'Space Mono', monospace; padding: 2px 8px; border-radius: 20px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.25); color: #c084fc; white-space: nowrap; }
+
+        /* Redirect badge */
+        .badge-redirect { font-size: 9px; font-family: 'Space Mono', monospace; padding: 2px 7px; border-radius: 20px; background: rgba(234,179,8,0.15); border: 1px solid rgba(234,179,8,0.3); color: #fde047; white-space: nowrap; }
+
+        /* Cancel btn */
+        #cancelBtn { display:none; }
+        #cancelBtn.visible { display:flex; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-950 via-[#190a2d] to-slate-950">
@@ -81,7 +88,7 @@
             <textarea
                 id="mainInput"
                 rows="4"
-                placeholder="Tempel URL UC Share, banyak URL sekaligus, atau teks apapun yang mengandung link UC Share..."
+                placeholder="Tempel URL UC Share (drive.ucweb.com / uc-share.com / ucgroup.me / domain apapun dengan /s/), banyak URL, atau teks apapun..."
                 class="w-full px-5 pt-4 pb-3 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none resize-none leading-relaxed rounded-t-2xl"
                 oninput="onInputChange()"
                 onpaste="setTimeout(onInputChange,30)"
@@ -111,6 +118,12 @@
                         Paste
                     </button>
                     <button onclick="clearForm()" class="text-gray-500 hover:text-gray-300 text-xs px-3 py-2 glass rounded-xl transition-all">Clear</button>
+                    <!-- Cancel button (shown while running) -->
+                    <button id="cancelBtn" onclick="cancelRun()"
+                        class="items-center gap-2 px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke-width="2"/></svg>
+                        Batal
+                    </button>
                     <button onclick="runDownload()" id="runBtn"
                         class="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-all shadow-lg">
                         <div id="runSpinner" class="spinner hidden"></div>
@@ -125,7 +138,10 @@
         <div id="progressPanel" class="hidden mt-4 glass-p rounded-2xl p-5 fade-in">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-white text-sm font-bold">📊 Processing</span>
-                <span id="progLabel" class="mono text-xs text-gray-400">0 / 0</span>
+                <div class="flex items-center gap-3">
+                    <span id="etaLabel" class="mono text-xs text-gray-500 hidden"></span>
+                    <span id="progLabel" class="mono text-xs text-gray-400">0 / 0</span>
+                </div>
             </div>
             <div class="prog-track mb-3"><div id="progFill" class="prog-fill" style="width:0%"></div></div>
             <div id="statusRows" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
@@ -178,7 +194,6 @@
                     <button onclick="saveJson()" class="px-3 py-2 glass text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all">.json</button>
                 </div>
             </div>
-            <!-- Per-source URL groups rendered here -->
             <div id="urlGroupsContainer" class="space-y-3"></div>
         </div>
     </div>
@@ -189,16 +204,17 @@
             <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <h3 class="text-gray-400 text-lg font-bold mb-2">Siap untuk download?</h3>
-        <p class="text-gray-600 text-sm mb-10">Tempel URL UC Share, banyak URL, atau teks apapun ke kolom di atas</p>
+        <p class="text-gray-600 text-sm mb-4">Mendukung drive.ucweb.com · uc-share.com · ucgroup.me · <span class="text-yellow-600">domain apapun dengan /s/</span></p>
+        <p class="text-gray-700 text-xs mono mb-10">Semua URL dengan path /s/ otomatis diarahkan ke drive.ucweb.com ⚡</p>
         <div class="max-w-2xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3">
             <div class="glass rounded-xl p-4 border border-purple-500/10"><p class="text-2xl mb-2">🔗</p><p class="text-white text-xs font-bold">Single URL</p><p class="text-gray-600 text-xs mt-1">1 link, langsung jalan</p></div>
             <div class="glass rounded-xl p-4 border border-purple-500/10"><p class="text-2xl mb-2">📋</p><p class="text-white text-xs font-bold">Bulk</p><p class="text-gray-600 text-xs mt-1">Banyak URL sekaligus</p></div>
             <div class="glass rounded-xl p-4 border border-purple-500/10"><p class="text-2xl mb-2">🔍</p><p class="text-white text-xs font-bold">Auto Detect</p><p class="text-gray-600 text-xs mt-1">Dari teks sembarang</p></div>
-            <div class="glass rounded-xl p-4 border border-purple-500/10"><p class="text-2xl mb-2">⚡</p><p class="text-white text-xs font-bold">Parallel</p><p class="text-gray-600 text-xs mt-1">Multi-worker, lebih cepat</p></div>
+            <div class="glass rounded-xl p-4 border border-yellow-500/10"><p class="text-2xl mb-2">↪️</p><p class="text-white text-xs font-bold">Auto Redirect</p><p class="text-gray-600 text-xs mt-1">Semua /s/ → ucweb</p></div>
         </div>
     </div>
 
-    <p class="text-center text-gray-700 text-xs mono mt-16 pb-6">UC Share Downloader v2.0 · Made with ❤️</p>
+    <p class="text-center text-gray-700 text-xs mono mt-16 pb-6">UC Share Downloader v2.2 · Made with ❤️</p>
 </div>
 
 <!-- Share Modal -->
@@ -231,34 +247,85 @@
 </div>
 
 <script>
-const UC_RE = /https?:\/\/(?:drive\.ucweb\.com|ucshare\.[a-z]+|uc-share\.com)\/s\/[A-Za-z0-9_?&=%-]+/gi;
+// ══════════════════════════════════════════════════════════════════
+//  REGEX — dua pola:
+//  1) Domain UC Share yang dikenal (regex asli)
+//  2) Domain APAPUN dengan path /s/<slug> — akan dinormalisasi ke
+//     drive.ucweb.com sebelum di-fetch
+// ══════════════════════════════════════════════════════════════════
+const UC_KNOWN_RE  = /https?:\/\/(?:drive\.ucweb\.com|uc-share\.com|ucgroup\.me|ucshare\.[a-z]{2,})\/s\/[A-Za-z0-9_%-]+(?:\?[A-Za-z0-9_&=%-]*)?/gi;
+const UC_ANY_RE    = /https?:\/\/[A-Za-z0-9.-]+\/s\/[A-Za-z0-9_%-]+(?:\?[A-Za-z0-9_&=%-]*)?/gi;
 
-// allVideos: flat array of all video objects
-// sourceGroups: Map of sourceUrl -> { videos: [], info: {} }
-let allVideos = [];
-let sourceGroups = new Map(); // key = original UC Share URL, value = { label, videos: [] }
-let detectedUrls = [];
-let running = false;
+// ══════════════════════════════════════════════════════════════════
+//  normalizeUcUrl — inti perbaikan
+//  Semua URL yang punya path /s/<slug> diubah menjadi
+//  https://drive.ucweb.com/s/<slug>[?query]
+// ══════════════════════════════════════════════════════════════════
+function normalizeUcUrl(url) {
+    try {
+        const u    = new URL(url);
+        const segs = u.pathname.split('/').filter(Boolean);
+        // Cari index segmen "s" diikuti slug
+        const sIdx = segs.indexOf('s');
+        if (sIdx !== -1 && segs[sIdx + 1]) {
+            const slug  = segs[sIdx + 1];
+            const query = u.search; // termasuk "?" jika ada
+            return `https://drive.ucweb.com/s/${slug}${query}`;
+        }
+    } catch {}
+    return url; // kembalikan asli jika gagal parse
+}
 
-/* ══════════ INPUT LOGIC ══════════ */
+// ══════════ STATE ══════════
+let allVideos    = [];
+let sourceGroups = new Map(); // originalUrl -> { label, normalizedUrl, videos[], redirected }
+let detectedUrls = [];        // URL asli yang terdeteksi (sebelum normalisasi)
+let running      = false;
+let abortCtrl    = null;
+let cancelled    = false;
+
+// ETA tracking
+let runStartTime = 0;
+let runDoneCount = 0;
+let runTotal     = 0;
+
+// ══════════ ESCAPE HTML ══════════
+const ESC_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+
+// ══════════ INPUT — debounced ══════════
+let _inputTimer;
 function onInputChange() {
+    clearTimeout(_inputTimer);
+    _inputTimer = setTimeout(_doInputChange, 150);
+}
+
+function _doInputChange() {
     const raw = document.getElementById('mainInput').value;
-    UC_RE.lastIndex = 0;
-    const found = [...new Set(raw.match(UC_RE) || [])];
-    detectedUrls = found;
 
-    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-    const pureLines = lines.filter(l => { UC_RE.lastIndex = 0; return UC_RE.test(l) && l.startsWith('http'); });
-    UC_RE.lastIndex = 0;
+    // Coba UC_KNOWN_RE dulu, lalu UC_ANY_RE untuk menangkap domain lain
+    UC_KNOWN_RE.lastIndex = 0;
+    UC_ANY_RE.lastIndex   = 0;
+    const knownMatches = raw.match(UC_KNOWN_RE) || [];
+    const anyMatches   = raw.match(UC_ANY_RE)   || [];
 
-    const urlBadge = document.getElementById('urlBadge');
-    const modeBadge = document.getElementById('modeBadge');
+    // Gabung, deduplikasi, validasi slug
+    const merged = [...new Set([...knownMatches, ...anyMatches])].filter(isValidUcUrl);
+    detectedUrls = merged;
+
+    const lines     = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    UC_ANY_RE.lastIndex = 0;
+    const pureLines = lines.filter(l => { UC_ANY_RE.lastIndex = 0; return UC_ANY_RE.test(l) && l.startsWith('http'); });
+    UC_ANY_RE.lastIndex = 0;
+
+    const n = detectedUrls.length;
+    document.getElementById('urlBadge').textContent = `${n} URL`;
+
+    const modeBadge    = document.getElementById('modeBadge');
     const parallelWrap = document.getElementById('parallelWrap');
-    const tagStrip = document.getElementById('tagStrip');
+    const tagStrip     = document.getElementById('tagStrip');
 
-    urlBadge.textContent = `${found.length} URL`;
-
-    if (found.length === 0) {
+    if (n === 0) {
         modeBadge.classList.add('hidden');
         parallelWrap.classList.remove('visible');
         tagStrip.classList.remove('visible');
@@ -266,40 +333,53 @@ function onInputChange() {
     }
 
     modeBadge.classList.remove('hidden');
-    if (found.length === 1 && pureLines.length >= 1) {
+    if (n === 1 && pureLines.length >= 1) {
         modeBadge.textContent = '🔗 Single';
         modeBadge.className = 'mono text-xs px-2 py-0.5 rounded-full border bg-blue-500/15 border-blue-500/30 text-blue-300';
-    } else if (pureLines.length === found.length && found.length > 1) {
-        modeBadge.textContent = `📋 Bulk ×${found.length}`;
+    } else if (pureLines.length === n && n > 1) {
+        modeBadge.textContent = `📋 Bulk ×${n}`;
         modeBadge.className = 'mono text-xs px-2 py-0.5 rounded-full border bg-purple-500/15 border-purple-500/30 text-purple-300';
     } else {
-        modeBadge.textContent = `🔍 Auto Detect ×${found.length}`;
+        modeBadge.textContent = `🔍 Auto Detect ×${n}`;
         modeBadge.className = 'mono text-xs px-2 py-0.5 rounded-full border bg-pink-500/15 border-pink-500/30 text-pink-300';
     }
 
-    if (found.length > 1) parallelWrap.classList.add('visible');
+    if (n > 1) parallelWrap.classList.add('visible');
     else parallelWrap.classList.remove('visible');
 
-    const isAutoDetect = found.length > 0 && pureLines.length < found.length;
+    const isAutoDetect = n > 0 && pureLines.length < n;
     if (isAutoDetect) { tagStrip.classList.add('visible'); renderTags(); }
     else tagStrip.classList.remove('visible');
 }
 
+function isValidUcUrl(url) {
+    try {
+        const u    = new URL(url);
+        const segs = u.pathname.split('/').filter(Boolean);
+        const sIdx = segs.indexOf('s');
+        // Harus punya /s/ diikuti slug minimal 8 karakter
+        return sIdx !== -1 && segs[sIdx + 1] && segs[sIdx + 1].length >= 8;
+    } catch { return false; }
+}
+
 function renderTags() {
-    const tagStrip = document.getElementById('tagStrip');
-    tagStrip.innerHTML = detectedUrls.map((u, i) =>
-        `<span class="url-tag">
+    document.getElementById('tagStrip').innerHTML = detectedUrls.map((u, i) => {
+        const norm      = normalizeUcUrl(u);
+        const redirected = norm !== u;
+        return `<span class="url-tag">
             <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.1-1.1" stroke-width="2"/></svg>
             ${escHtml(shortUrl(u))}
+            ${redirected ? '<span title="Akan dialihkan ke drive.ucweb.com">↪️</span>' : ''}
             <button onclick="removeTag(${i})">✕</button>
-        </span>`
-    ).join('');
+        </span>`;
+    }).join('');
 }
 
 function removeTag(i) {
     detectedUrls.splice(i, 1);
-    document.getElementById('urlBadge').textContent = `${detectedUrls.length} URL`;
-    if (detectedUrls.length === 0) {
+    const n = detectedUrls.length;
+    document.getElementById('urlBadge').textContent = `${n} URL`;
+    if (n === 0) {
         document.getElementById('tagStrip').classList.remove('visible');
         document.getElementById('modeBadge').classList.add('hidden');
         document.getElementById('parallelWrap').classList.remove('visible');
@@ -317,51 +397,160 @@ async function pasteClipboard() {
 function clearForm() {
     document.getElementById('mainInput').value = '';
     detectedUrls = [];
-    onInputChange();
+    _doInputChange();
     ['statsBar','errorMsg','resultsSection'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById('progressPanel').classList.add('hidden');
     document.getElementById('emptyState').classList.remove('hidden');
 }
 
-/* ══════════ RUN ══════════ */
+// ══════════ CANCEL ══════════
+function cancelRun() {
+    cancelled = true;
+    abortCtrl?.abort();
+}
+
+function setCancelBtn(show) {
+    const btn = document.getElementById('cancelBtn');
+    if (show) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+}
+
+// ══════════ FETCH — retry + timeout + cache ══════════
+const _apiCache = new Map();
+const FETCH_TIMEOUT_MS = 60000;
+
+async function fetchWithTimeout(input, options = {}) {
+    const ctrl      = new AbortController();
+    abortCtrl       = ctrl;
+    const timeoutId = setTimeout(() => ctrl.abort('timeout'), FETCH_TIMEOUT_MS);
+    try {
+        const res = await fetch(input, { ...options, signal: ctrl.signal });
+        clearTimeout(timeoutId);
+        return res;
+    } catch (e) {
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError' || ctrl.signal.aborted) {
+            if (cancelled) throw new Error('Dibatalkan');
+            throw new Error('Request timeout (>60 detik)');
+        }
+        throw e;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  fetchApi — NORMALISASI TERJADI DI SINI
+//  URL asli (originalUrl) disimpan untuk label, tapi yang
+//  dikirim ke API adalah versi yang sudah dinormalisasi ke
+//  drive.ucweb.com
+// ══════════════════════════════════════════════════════════════════
+async function fetchApi(originalUrl, retries = 3) {
+    const url = normalizeUcUrl(originalUrl); // ← perbaikan utama
+
+    if (_apiCache.has(url)) return _apiCache.get(url);
+
+    for (let attempt = 0; attempt < retries; attempt++) {
+        if (cancelled) throw new Error('Dibatalkan');
+        try {
+            const res  = await fetchWithTimeout(`./api/?url=${encodeURIComponent(url)}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.status === 'success') _apiCache.set(url, data);
+            return data;
+        } catch (e) {
+            if (cancelled || e.message === 'Dibatalkan') throw new Error('Dibatalkan');
+            if (attempt === retries - 1) throw e;
+            await new Promise(r => setTimeout(r, 1000 * 2 ** attempt));
+        }
+    }
+}
+
+// ══════════ RUN ══════════
 async function runDownload() {
     if (running) return;
     if (!detectedUrls.length) { showError('Masukkan atau tempel URL UC Share terlebih dahulu'); return; }
 
-    running = true;
+    running   = true;
+    cancelled = false;
     setRunBtn(true);
-    ['statsBar','errorMsg','resultsSection'].forEach(id => document.getElementById(id).classList.add('hidden'));
-    document.getElementById('emptyState').classList.add('hidden');
-    allVideos = [];
-    sourceGroups = new Map();
+    setCancelBtn(true);
 
-    const urls = [...detectedUrls];
+    ['statsBar','errorMsg'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('emptyState').classList.add('hidden');
+
+    // Reset hasil lama
+    allVideos    = [];
+    sourceGroups = new Map();
+    document.getElementById('videosGrid').innerHTML = '';
+    document.getElementById('urlGroupsContainer').innerHTML = '';
+    document.getElementById('resultsTitle').textContent = '📹 0 videos';
+    document.getElementById('urlCount').textContent = '0 URL dari 0 sumber';
+    document.getElementById('resultsSection').classList.remove('hidden');
+
+    const urls     = [...detectedUrls];
     const parallel = document.getElementById('parallelOn').checked;
-    const workers = parseInt(document.getElementById('workerSel').value);
+    const workers  = Math.min(parseInt(document.getElementById('workerSel').value), urls.length);
+
+    runStartTime = Date.now();
+    runDoneCount = 0;
+    runTotal     = urls.length;
 
     if (urls.length === 1) {
         document.getElementById('progressPanel').classList.add('hidden');
         try {
             const data = await fetchApi(urls[0]);
             if (data.status === 'success' && data.videos?.length) {
-                allVideos = data.videos;
-                sourceGroups.set(urls[0], { label: labelFromUrl(urls[0]), videos: data.videos });
+                addVideos(urls[0], data.videos);
                 renderStats(data.share_info);
-                renderVideos(allVideos);
-            } else {
+            } else if (!cancelled) {
                 showError(data.message || 'Tidak ada video ditemukan');
             }
-        } catch(e) { showError('Gagal: ' + e.message); }
+        } catch(e) {
+            if (!cancelled) showError('Gagal: ' + e.message);
+        }
     } else {
         buildProgressRows(urls);
         if (parallel) await runParallel(urls, workers);
         else await runSequential(urls);
-        if (allVideos.length > 0) renderVideos(allVideos);
-        else showError('Tidak ada video berhasil diambil');
+        if (allVideos.length === 0 && !cancelled)
+            showError('Tidak ada video berhasil diambil');
     }
 
     running = false;
     setRunBtn(false);
+    setCancelBtn(false);
+    hideEta();
+}
+
+// addVideos menyimpan originalUrl sebagai kunci group (untuk label)
+// tapi normalisasi sudah terjadi saat fetch, jadi data sudah benar
+function addVideos(originalUrl, videos) {
+    const seen    = new Set(allVideos.map(v => v.download?.url).filter(Boolean));
+    const newVids = videos.filter(v => !seen.has(v.download?.url));
+    if (!newVids.length) return;
+
+    allVideos.push(...newVids);
+
+    const normUrl    = normalizeUcUrl(originalUrl);
+    const redirected = normUrl !== originalUrl;
+
+    if (!sourceGroups.has(originalUrl)) {
+        sourceGroups.set(originalUrl, {
+            label:       labelFromUrl(originalUrl),
+            normalizedUrl: normUrl,
+            redirected,
+            videos:      []
+        });
+    }
+    sourceGroups.get(originalUrl).videos.push(...newVids);
+
+    const grid     = document.getElementById('videosGrid');
+    const startIdx = allVideos.length - newVids.length;
+    newVids.forEach((v, i) => grid.appendChild(makeCard(v, startIdx + i)));
+
+    document.getElementById('resultsTitle').textContent =
+        `📹 ${allVideos.length} video${allVideos.length !== 1 ? 's' : ''} ditemukan`;
+
+    renderUrlGroups();
 }
 
 function setRunBtn(on) {
@@ -371,16 +560,30 @@ function setRunBtn(on) {
     document.getElementById('runLabel').textContent = on ? 'Loading...' : 'Search';
 }
 
-/* ══════════ PROGRESS ══════════ */
+// ══════════ ETA ══════════
+function updateEta(done, total) {
+    if (done === 0 || done >= total) { hideEta(); return; }
+    const elapsed   = (Date.now() - runStartTime) / 1000;
+    const rate      = done / elapsed;
+    const remaining = Math.ceil((total - done) / rate);
+    const el        = document.getElementById('etaLabel');
+    el.textContent  = `~${remaining}d tersisa`;
+    el.classList.remove('hidden');
+}
+function hideEta() { document.getElementById('etaLabel').classList.add('hidden'); }
+
+// ══════════ PROGRESS ══════════
 function buildProgressRows(urls) {
     document.getElementById('progressPanel').classList.remove('hidden');
-    document.getElementById('statusRows').innerHTML = urls.map((u, i) =>
-        `<div class="s-row" id="sr-${i}">
+    document.getElementById('statusRows').innerHTML = urls.map((u, i) => {
+        const norm      = normalizeUcUrl(u);
+        const redirected = norm !== u;
+        return `<div class="s-row" id="sr-${i}">
             <span id="sri-${i}" class="w-5 text-center text-sm flex-shrink-0">⏳</span>
-            <span class="text-gray-400 text-xs mono truncate flex-1" title="${escHtml(u)}">${escHtml(shortUrl(u))}</span>
+            <span class="text-gray-400 text-xs mono truncate flex-1" title="${escHtml(u)}">${escHtml(shortUrl(u))}${redirected ? ' <span class="text-yellow-500">↪</span>' : ''}</span>
             <span class="text-gray-600 text-xs mono flex-shrink-0" id="srt-${i}">waiting</span>
-        </div>`
-    ).join('');
+        </div>`;
+    }).join('');
     updateProg(0, urls.length);
 }
 
@@ -394,35 +597,38 @@ function setRow(i, st, msg) {
 }
 
 function updateProg(done, total) {
-    document.getElementById('progFill').style.width = total ? (done/total*100)+'%' : '0%';
+    document.getElementById('progFill').style.width = total ? (done / total * 100) + '%' : '0%';
     document.getElementById('progLabel').textContent = `${done} / ${total}`;
+    updateEta(done, total);
 }
 
 async function runParallel(urls, workers) {
     let done = 0, active = 0;
-    const queue = urls.map((u, i) => ({u, i}));
+    const queue = urls.map((u, i) => ({ u, i }));
     await new Promise(resolve => {
         function spawn() {
-            while (active < workers && queue.length) {
-                const {u, i} = queue.shift();
+            while (active < workers && queue.length && !cancelled) {
+                const { u, i } = queue.shift();
                 active++;
                 setRow(i, 'loading', 'fetching...');
-                fetchApi(u)
+                fetchApi(u)  // fetchApi sudah melakukan normalisasi di dalam
                     .then(d => {
                         if (d.status === 'success' && d.videos?.length) {
-                            allVideos.push(...d.videos);
-                            sourceGroups.set(u, { label: labelFromUrl(u), videos: d.videos });
+                            addVideos(u, d.videos);
                             setRow(i, 'done', `${d.videos.length} video`);
-                        } else setRow(i, 'error', (d.message || 'error').slice(0,24));
+                        } else {
+                            setRow(i, 'error', (d.message || 'error').slice(0, 24));
+                        }
                     })
-                    .catch(e => setRow(i, 'error', e.message.slice(0,24)))
+                    .catch(e => setRow(i, 'error', e.message.slice(0, 24)))
                     .finally(() => {
                         active--; done++;
                         updateProg(done, urls.length);
-                        if (done === urls.length) resolve();
+                        if (done === urls.length || cancelled) resolve();
                         else spawn();
                     });
             }
+            if (cancelled) resolve();
         }
         spawn();
     });
@@ -430,63 +636,50 @@ async function runParallel(urls, workers) {
 
 async function runSequential(urls) {
     for (let i = 0; i < urls.length; i++) {
+        if (cancelled) break;
         setRow(i, 'loading', 'fetching...');
         try {
             const d = await fetchApi(urls[i]);
             if (d.status === 'success' && d.videos?.length) {
-                allVideos.push(...d.videos);
-                sourceGroups.set(urls[i], { label: labelFromUrl(urls[i]), videos: d.videos });
+                addVideos(urls[i], d.videos);
                 setRow(i, 'done', `${d.videos.length} video`);
-            } else setRow(i, 'error', (d.message || 'error').slice(0,24));
-        } catch(e) { setRow(i, 'error', e.message.slice(0,24)); }
-        updateProg(i+1, urls.length);
+            } else {
+                setRow(i, 'error', (d.message || 'error').slice(0, 24));
+            }
+        } catch(e) {
+            setRow(i, 'error', e.message.slice(0, 24));
+        }
+        updateProg(i + 1, urls.length);
     }
 }
 
-/* ══════════ RENDER ══════════ */
+// ══════════ RENDER ══════════
 function renderStats(info) {
     if (!info) return;
-    document.getElementById('stFiles').textContent = info.total_files || 0;
-    document.getElementById('stVideos').textContent = info.total_videos || 0;
-    document.getElementById('stSize').textContent = (info.total_size_mb||0).toFixed(2) + ' MB';
+    document.getElementById('stFiles').textContent   = info.total_files || 0;
+    document.getElementById('stVideos').textContent  = info.total_videos || 0;
+    document.getElementById('stSize').textContent    = (info.total_size_mb || 0).toFixed(2) + ' MB';
     document.getElementById('stFolders').textContent = info.folders_scanned || 0;
     document.getElementById('statsBar').classList.remove('hidden');
 }
 
-function renderVideos(videos) {
-    document.getElementById('resultsTitle').textContent = `📹 ${videos.length} video${videos.length!==1?'s':''} ditemukan`;
-    const grid = document.getElementById('videosGrid');
-    grid.innerHTML = '';
-    videos.forEach((v, i) => grid.appendChild(makeCard(v, i)));
-
-    renderUrlGroups();
-    document.getElementById('resultsSection').classList.remove('hidden');
-}
-
-/* ══════════ URL GROUPS ══════════ */
+// ══════════ URL GROUPS ══════════
 function renderUrlGroups() {
     const container = document.getElementById('urlGroupsContainer');
     container.innerHTML = '';
+    let totalUrls   = 0;
 
-    let totalUrls = 0;
-    const totalSources = sourceGroups.size;
-
-    // If only one source, still show grouped but without source label clutter
-    sourceGroups.forEach((group, sourceUrl) => {
+    sourceGroups.forEach((group, originalUrl) => {
         const watchUrls = group.videos
             .filter(v => v.status !== 'error' && v.download?.url)
             .map(v => v.download.url);
-
         totalUrls += watchUrls.length;
+        if (!watchUrls.length) return;
 
-        if (watchUrls.length === 0) return;
-
-        const groupEl = document.createElement('div');
+        const groupEl   = document.createElement('div');
         groupEl.className = 'url-group fade-in';
-
-        const shortSrc = shortUrl(sourceUrl);
-        const groupId = 'urlg_' + Math.random().toString(36).slice(2);
-        const copyBtnId = 'cpybtn_' + Math.random().toString(36).slice(2);
+        const groupId   = 'urlg_'  + Math.random().toString(36).slice(2);
+        const copyBtnId = 'cpybtn_'+ Math.random().toString(36).slice(2);
 
         groupEl.innerHTML = `
             <div class="url-group-header">
@@ -494,27 +687,25 @@ function renderUrlGroups() {
                     <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.1-1.1" stroke-width="2"/>
                     </svg>
-                    <span class="url-group-source" title="${escHtml(sourceUrl)}">${escHtml(shortSrc)}</span>
+                    <span class="url-group-source" title="${escHtml(originalUrl)}">${escHtml(shortUrl(originalUrl))}</span>
+                    ${group.redirected ? `<span class="badge-redirect">↪ ucweb</span>` : ''}
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <span class="badge-count">${watchUrls.length} URL</span>
-                    <button id="${copyBtnId}" onclick="copyGroup('${groupId}','${copyBtnId}')"
-                        class="copy-btn-sm">
+                    <button id="${copyBtnId}" onclick="copyGroup('${groupId}','${copyBtnId}')" class="copy-btn-sm">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-width="2"/></svg>
                         Copy
                     </button>
                 </div>
             </div>
-            <textarea id="${groupId}" readonly
-                class="url-group-textarea"
+            <textarea id="${groupId}" readonly class="url-group-textarea"
                 style="min-height:${Math.min(watchUrls.length * 22 + 20, 160)}px"
-            >${watchUrls.join('\n')}</textarea>
-        `;
-
+            >${watchUrls.join('\n')}</textarea>`;
         container.appendChild(groupEl);
     });
 
-    document.getElementById('urlCount').textContent = `${totalUrls} URL dari ${totalSources} sumber`;
+    document.getElementById('urlCount').textContent =
+        `${totalUrls} URL dari ${sourceGroups.size} sumber`;
 }
 
 function copyGroup(taId, btnId) {
@@ -530,21 +721,22 @@ function copyGroup(taId, btnId) {
     });
 }
 
+// ══════════ CARD ══════════
 function makeCard(v, idx) {
-    const err = v.status === 'error';
-    const name = v.name || 'Unknown';
+    const err      = v.status === 'error';
+    const name     = v.name || 'Unknown';
     const videoUrl = v.download?.url || '#';
-    const direct = v.download?.direct_download || videoUrl;
-    const thumb = v.download?.thumbnail || '';
-    const mb = (v.size_mb || 0).toFixed(1);
-    const depth = v.depth || 0;
+    const direct   = v.download?.direct_download || videoUrl;
+    const thumb    = v.download?.thumbnail || '';
+    const mb       = (v.size_mb || 0).toFixed(1);
+    const depth    = v.depth || 0;
 
     const card = document.createElement('div');
     card.className = `card-hover glass rounded-2xl overflow-hidden border ${err ? 'border-red-500/30' : 'border-purple-500/10'} fade-in`;
-    card.style.animationDelay = (idx * 0.035) + 's';
+    card.style.animationDelay = Math.min(idx * 0.035, 0.5) + 's';
 
     const thumbHtml = !err && thumb
-        ? `<img src="${escHtml(thumb)}" alt="${escHtml(name)}" class="w-full h-44 object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-44 bg-gray-800/50 flex items-center justify-center\\'><svg class=\\'w-10 h-10 text-gray-600\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path d=\\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\\' stroke-width=\\'1.5\\'/></svg></div>'">`
+        ? `<img src="${escHtml(thumb)}" alt="${escHtml(name)}" loading="lazy" class="w-full h-44 object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-44 bg-gray-800/50 flex items-center justify-center\\'><svg class=\\'w-10 h-10 text-gray-600\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path d=\\'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z\\' stroke-width=\\'1.5\\'/></svg></div>'">`
         : `<div class="w-full h-44 bg-gray-800/50 flex items-center justify-center"><svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="1.5"/></svg></div>`;
 
     card.innerHTML = `
@@ -581,16 +773,19 @@ function makeCard(v, idx) {
     return card;
 }
 
-/* ══════════ SHARE ══════════ */
-function openShare() { document.getElementById('shareModal').classList.remove('hidden'); }
-function closeShare() { document.getElementById('shareModal').classList.add('hidden'); document.getElementById('shareStatus').classList.add('hidden'); }
+// ══════════ SHARE ══════════
+function openShare()  { document.getElementById('shareModal').classList.remove('hidden'); }
+function closeShare() {
+    document.getElementById('shareModal').classList.add('hidden');
+    document.getElementById('shareStatus').classList.add('hidden');
+}
 
 async function doShare(type) {
     const urls = getAllUrlsText();
-    const st = document.getElementById('shareStatus');
+    const st   = document.getElementById('shareStatus');
     const flash = m => { st.textContent = m; st.classList.remove('hidden'); setTimeout(() => st.classList.add('hidden'), 3000); };
     if (type === 'copy') { await navigator.clipboard.writeText(urls); flash('✅ Disalin!'); }
-    else if (type === 'txt') { saveTxt(); flash('✅ Mengunduh .txt'); }
+    else if (type === 'txt')  { saveTxt();  flash('✅ Mengunduh .txt'); }
     else if (type === 'json') { saveJson(); flash('✅ Mengunduh .json'); }
     else if (type === 'native') {
         if (navigator.share) { try { await navigator.share({ title: 'UC Share URLs', text: urls }); } catch {} }
@@ -598,26 +793,20 @@ async function doShare(type) {
     }
 }
 
-/* ══════════ UTILS ══════════ */
-async function fetchApi(url) {
-    const r = await fetch(`./api/?url=${encodeURIComponent(url)}`);
-    return r.json();
-}
-
+// ══════════ UTILS ══════════
 function showError(msg) {
     document.getElementById('errorTxt').textContent = msg;
     document.getElementById('errorMsg').classList.remove('hidden');
     document.getElementById('emptyState').classList.add('hidden');
 }
 
-// Collect all watch URLs across all groups as flat text
 function getAllUrlsText() {
     const lines = [];
-    sourceGroups.forEach(group => {
+    sourceGroups.forEach(group =>
         group.videos
             .filter(v => v.status !== 'error' && v.download?.url)
-            .forEach(v => lines.push(v.download.url));
-    });
+            .forEach(v => lines.push(v.download.url))
+    );
     return lines.join('\n');
 }
 
@@ -646,30 +835,27 @@ function dlBlob(blob, name) {
     a.click(); URL.revokeObjectURL(a.href);
 }
 
-function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = String(s ?? '');
-    return d.innerHTML;
-}
-
 function shortUrl(url) {
     try {
-        const u = new URL(url);
-        const p = u.pathname.split('/').filter(Boolean);
-        const slug = p[p.length-1] || '';
-        return u.hostname.replace('drive.ucweb.com','ucweb').replace('uc-share.com','uc-share') + '/…/' + slug.slice(0,12);
-    } catch { return String(url).slice(-24); }
+        const u    = new URL(url);
+        const host = u.hostname
+            .replace('drive.ucweb.com', 'ucweb')
+            .replace('uc-share.com',    'uc-share')
+            .replace('ucgroup.me',      'ucgroup');
+        const seg  = u.pathname.split('/').filter(Boolean);
+        const slug = seg[seg.length - 1] || '';
+        return `${host}/…/${slug.slice(0, 13)}`;
+    } catch { return String(url).slice(-26); }
 }
 
 function labelFromUrl(url) {
     try {
-        const u = new URL(url);
-        const p = u.pathname.split('/').filter(Boolean);
-        return p[p.length-1] || url;
+        const seg = new URL(url).pathname.split('/').filter(Boolean);
+        return seg[seg.length - 1] || url;
     } catch { return url; }
 }
 
-// Ctrl+Enter to submit
+// Ctrl+Enter submit
 document.getElementById('mainInput').addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runDownload(); }
 });
